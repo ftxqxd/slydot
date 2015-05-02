@@ -14,7 +14,7 @@ use piston::window::WindowSettings;
 use piston::event::*;
 
 pub mod game;
-pub use game::{Game, Draw};
+pub use game::Game;
 
 pub mod unit;
 pub use unit::Unit;
@@ -40,17 +40,7 @@ fn main() {
     for e in window.events() {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {
-                use graphics::*;
-                clear([0.0, 0.0, 0.0, 1.0], gl);
-                game.for_grid(|grid, game| {
-                    grid.draw(game, &c, gl);
-                });
-                game.for_each_player_unit(|unit, game| {
-                    unit.draw(game, &c, gl);
-                });
-                game.for_each_enemy_unit(|unit, game| {
-                    unit.draw(game, &c, gl);
-                });
+                game.draw(&c, gl);
             });
             game.frame += 1;
         }

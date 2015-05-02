@@ -1,4 +1,4 @@
-use super::{Draw, Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
+use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
 use std::ops::{Index, IndexMut};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
@@ -49,10 +49,8 @@ impl Grid {
         if x < 0 || y < 0 || x >= self.width as i16 || y >= self.height() as i16 { return false }
         self[(x as usize, y as usize)] != Cell::Empty
     }
-}
 
-impl Draw for Grid {
-    fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
+    pub fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
         for (i, v) in self.grid.iter_mut().enumerate() {

@@ -53,8 +53,18 @@ impl Game {
             && self.player_units.iter().all(|a| !a.occupies(x, y))
             && self.enemy_units.iter().all(|a| !a.occupies(x, y))
     }
-}
 
-pub trait Draw {
-    fn draw(&mut self, &Game, &Context, &mut GlGraphics);
+    pub fn draw(&mut self, c: &Context, gl: &mut GlGraphics) {
+        use graphics::*;
+        clear([0.0, 0.0, 0.0, 1.0], gl);
+        self.for_grid(|grid, game| {
+            grid.draw(game, &c, gl);
+        });
+        self.for_each_player_unit(|unit, game| {
+            unit.draw(game, &c, gl);
+        });
+        self.for_each_enemy_unit(|unit, game| {
+            unit.draw(game, &c, gl);
+        });
+    }
 }

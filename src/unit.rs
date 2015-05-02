@@ -1,4 +1,4 @@
-use super::{Draw, Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
+use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
 use std::collections::VecDeque;
 use std::path::Path;
 use piston::input::{Button, Key};
@@ -102,10 +102,8 @@ impl Unit {
     pub fn occupies(&self, x: i16, y: i16) -> bool {
         self.parts.iter().any(|&p| p == (x, y))
     }
-}
 
-impl Draw for Unit {
-    fn draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
+    pub fn draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
         let (r, g, b) = (self.colour[0], self.colour[1], self.colour[2]);

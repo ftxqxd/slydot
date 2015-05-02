@@ -1,4 +1,4 @@
-use super::{Draw, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
+use super::{Draw, Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
 use std::ops::{Index, IndexMut};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
@@ -52,7 +52,7 @@ impl Grid {
 }
 
 impl Draw for Grid {
-    fn draw(&mut self, c: &Context, gl: &mut GlGraphics) {
+    fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
         for (i, v) in self.grid.iter_mut().enumerate() {
@@ -60,7 +60,7 @@ impl Draw for Grid {
             match *v {
                 Cell::Empty => {},
                 Cell::Floor => {
-                    rectangle([1.0, 1.0, 1.0, 0.5],
+                    rectangle([1.0, 1.0, 1.0, 0.3],
                               [CELL_OFFSET_X + x as f64 * (CELL_SIZE + CELL_PADDING),
                                CELL_OFFSET_Y + y as f64 * (CELL_SIZE + CELL_PADDING),
                                CELL_SIZE, CELL_SIZE],

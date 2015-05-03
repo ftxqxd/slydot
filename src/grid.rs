@@ -14,6 +14,7 @@ pub struct Grid {
     pub grid: Vec<Cell>,
     pub width: usize,
     pub highlight: Vec<u16>,
+    pub attack_hi: Vec<u16>,
     /// `None` when the player has no moves left or when no unit is selected.
     pub player_pos: Option<(i16, i16)>,
 }
@@ -31,6 +32,7 @@ impl Grid {
             grid: grid,
             width: width,
             highlight: vec![0; len],
+            attack_hi: vec![0; len],
             player_pos: None,
         }
     }
@@ -45,6 +47,7 @@ impl Grid {
                         Empty Empty Floor Floor Floor Floor Floor Empty Empty],
             width: 9,
             highlight: vec![0; 9 * 6],
+            attack_hi: vec![0; 9 * 6],
             player_pos: None,
         }
     }
@@ -114,6 +117,18 @@ impl Grid {
                           [cell_pos(px) + CELL_SIZE, cell_pos(py) - CELL_PADDING]],
                         c.transform,
                         gl);
+            }
+        }
+
+        for (i, &ah) in self.attack_hi.iter().enumerate() {
+            let (x, y) = (i % self.width, i / self.width);
+            if ah != 0 {
+                rectangle([1.0, 0.0, 0.0, 0.6],
+                          [cell_pos(x as i16) - 2.0,
+                           cell_pos(y as i16) - 2.0,
+                           CELL_SIZE + 4.0, CELL_SIZE + 4.0],
+                          c.transform,
+                          gl);
             }
         }
     }

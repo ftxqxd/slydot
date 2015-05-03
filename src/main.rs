@@ -38,7 +38,6 @@ fn main() {
     let window = Sdl2Window::new(
         opengl,
         WindowSettings::new("sunrise", [640, 480])
-        .exit_on_esc(true)
     );
 
     let ref mut gl = GlGraphics::new(opengl);

@@ -10,9 +10,29 @@ pub struct Unit {
     pub len_limit: usize,
     pub selected: bool,
     pub moves: u16,
+    pub has_attacked: bool,
     pub enemy: bool,
+    pub attack: Option<u16>,
+    pub target: Option<usize>,
+    pub attacks: Vec<Attack>,
+    pub under_attack: bool,
     colour: [f32; 3],
     texture: Texture,
+}
+
+#[derive(Copy, Clone)]
+pub struct Attack {
+    pub damage: u16,
+    pub range: u16,
+}
+
+impl Attack {
+    pub fn sample() -> Attack {
+        Attack {
+            damage: 1,
+            range: 2,
+        }
+    }
 }
 
 impl Unit {
@@ -22,8 +42,13 @@ impl Unit {
             parts: { let mut v = VecDeque::new(); v.push_back((0, 1)); v },
             len_limit: 4,
             selected: false,
+            attack: None,
+            target: None,
             moves: 10,
+            has_attacked: false,
             enemy: false,
+            attacks: vec![Attack::sample()],
+            under_attack: false,
             colour: [0.0, 0.5647058823529412, 0.9882352941176471],
             texture: tex,
         }
@@ -35,8 +60,13 @@ impl Unit {
             parts: { let mut v = VecDeque::new(); v.push_back((2, 0)); v },
             len_limit: 4,
             selected: false,
+            attack: None,
+            target: None,
             moves: 10,
+            has_attacked: false,
             enemy: false,
+            attacks: vec![Attack::sample()],
+            under_attack: false,
             colour: [0.5647058823529412, 0.9882352941176471, 0.0],
             texture: tex,
         }
@@ -45,12 +75,35 @@ impl Unit {
     pub fn sample_enemy() -> Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
-            parts: { let mut v = VecDeque::new(); v.push_back((8, 4)); v },
+            parts: { let mut v = VecDeque::new(); v.extend(vec![(8, 4), (7, 4), (7, 3)].into_iter()); v },
             len_limit: 4,
             selected: false,
-            moves: 0,
+            attack: None,
+            target: None,
+            moves: 4,
+            has_attacked: false,
             enemy: true,
+            attacks: vec![Attack::sample()],
+            under_attack: false,
             colour: [0.5647058823529412, 0.0, 0.9882352941176471],
+            texture: tex,
+        }
+    }
+
+    pub fn sample_enemy2() -> Unit {
+        let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
+        Unit {
+            parts: { let mut v = VecDeque::new(); v.extend(vec![(6, 4), (5, 4), (5, 3)].into_iter()); v },
+            len_limit: 4,
+            selected: false,
+            attack: None,
+            target: None,
+            moves: 4,
+            has_attacked: false,
+            enemy: true,
+            attacks: vec![Attack::sample()],
+            under_attack: false,
+            colour: [0.5647058823529412, 1.0, 0.9882352941176471],
             texture: tex,
         }
     }
@@ -79,6 +132,7 @@ impl Unit {
         }
 
         if self.moves == 0 { return }
+        if self.attack.is_some() { return }
 
         let (headx, heady) = self.parts[0];
         let new = (headx + dx, heady + dy);
@@ -103,12 +157,23 @@ impl Unit {
         self.parts.pop_back();
     }
 
+    pub fn damage(&mut self, amount: u16) {
+        for _ in 0..amount {
+            self.shorten();
+        }
+    }
+
     pub fn occupies(&self, x: i16, y: i16) -> bool {
         self.parts.iter().any(|&p| p == (x, y))
     }
 
     pub fn highlight(&self, game: &mut Game) {
-        game.grid.highlight.iter_mut().map(|x| *x = 0).count();
+        game.clear_highlight();
+        if let Some(attack) = self.attack {
+            let attack = self.attacks[attack as usize];
+            self._attack_highlight(game, attack.range, self.parts[0].0, self.parts[0].1);
+            return
+        }
         self._highlight(game, self.moves, self.parts[0].0, self.parts[0].1);
         if self.moves == 0 {
             game.grid.player_pos = None;
@@ -129,7 +194,104 @@ impl Unit {
         self._highlight(game, moves - 1, x, y - 1);
     }
 
+    fn _attack_highlight(&self, game: &mut Game, moves: u16, x: i16, y: i16) {
+        if !game.grid.is_valid(x, y) { return }
+        let pos = x as usize + y as usize*game.grid.width;
+        if game.grid.attack_hi[pos] >= moves + 1 { return }
+        game.grid.attack_hi[pos] = moves + 1;
+        if moves == 0 { return }
+        self._attack_highlight(game, moves - 1, x + 1, y);
+        self._attack_highlight(game, moves - 1, x - 1, y);
+        self._attack_highlight(game, moves - 1, x, y + 1);
+        self._attack_highlight(game, moves - 1, x, y - 1);
+    }
+
+    pub fn attack(&mut self, game: &mut Game, attack: u16) {
+        if self.has_attacked { return }
+        game.clear_highlight();
+        let range = self.attacks[attack as usize].range;
+        self.attack = Some(attack);
+        self.target = self.next_target(game, 0, range);
+        self.highlight(game);
+    }
+
+    pub fn attack_next(&mut self, game: &mut Game) {
+        if let Some(cur) = self.target {
+            let a = self.attack.unwrap();
+            let range = self.attacks[a as usize].range;
+            let target = self.next_target(game, cur, range);
+            self.target = target;
+        }
+    }
+
+    fn next_target(&self, game: &mut Game, cur: usize, range: u16) -> Option<usize> {
+        use std::cmp::min;
+        let mut next = None;
+        let ppos = self.parts[0];
+        let len = game.enemy_units.len();
+        'outer: for (i, enemy) in game.enemy_units.iter().enumerate() {
+            for epos in &enemy.parts {
+                if ((ppos.0 - epos.0).abs() as u16) + ((ppos.1 - epos.1).abs() as u16) <= range {
+                    let pos = if i <= cur { i + len } else { i };
+                    if let Some(next) = next.as_mut() {
+                        *next = min(*next, pos);
+                        continue 'outer
+                    }
+                    next = Some(pos);
+                }
+            }
+        }
+        let next = next.map(|x| x % len);
+        if let Some(next) = next {
+            game.enemy_units[cur].under_attack = false;
+            game.enemy_units[next].under_attack = true;
+        }
+        next
+    }
+
+    pub fn fire(&mut self, game: &mut Game) {
+        let mut target_is_kill = false;
+        if let (Some(atk), Some(ti)) = (self.attack, self.target) {
+            let target = &mut game.enemy_units[ti];
+            let damage = self.attacks[atk as usize].damage;
+            if target.parts.len() <= damage as usize {
+                target_is_kill = true;
+            } else {
+                target.damage(self.attacks[atk as usize].damage);
+            }
+            self.moves = 0;
+            self.has_attacked = true;
+        }
+        if target_is_kill {
+            // no
+            game.enemy_units.remove(self.target.unwrap());
+            self.target = None;
+        }
+        self.leave_attack(game);
+    }
+
+    pub fn leave_attack(&mut self, game: &mut Game) {
+        if let Some(t) = self.target {
+            game.enemy_units[t].under_attack = false;
+        }
+        self.attack = None;
+        self.target = None;
+        self.highlight(game);
+    }
+
     pub fn draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
+        if self.under_attack { return }
+
+        self._draw(game, c, gl);
+    }
+
+    pub fn draw_late(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
+        if !self.under_attack { return }
+
+        self._draw(game, c, gl);
+    }
+
+    fn _draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
         let (r, g, b) = (self.colour[0], self.colour[1], self.colour[2]);
@@ -141,14 +303,24 @@ impl Unit {
                 self.len_limit > 1
                 && self.moves > 0
                 && self.selected
+                && self.attack.is_none()
                 && self.parts.len() == self.len_limit && coords == self.parts[self.parts.len() - 1];
             let alpha = if is_last((x, y)) { (game.frame / 3 % 2) as f32 } else { 1.0 };
             for i in -1..3 {
                 let i = i as f64;
-                let mut colour = [[r * 0.57, g * 0.57, b * 0.57, alpha],
-                                  [r * 0.57, g * 0.57, b * 0.57, alpha],
-                                  [r * 0.57, g * 0.57, b * 0.57, alpha],
-                                  [r       , g       , b       , alpha]][(i + 1.0) as usize];
+                let mut colour = if self.under_attack {
+                    let t = (game.frame % 40) as f32 / 39.0;
+                    let r2 = r * t + (1.0 - t);
+                    [[r2 * 0.6, g * t   , b * t   , alpha],
+                     [r2 * 0.6, g * t   , b * t   , alpha],
+                     [r2 * 0.6, g * t   , b * t   , alpha],
+                     [r2      , g * t   , b * t   , alpha]][(i + 1.0) as usize]
+                } else {
+                    [[r * 0.57, g * 0.57, b * 0.57, alpha],
+                     [r * 0.57, g * 0.57, b * 0.57, alpha],
+                     [r * 0.57, g * 0.57, b * 0.57, alpha],
+                     [r       , g       , b       , alpha]][(i + 1.0) as usize]
+                };
                 let mut extra = 0.0;
                 if i == 2.0 { extra = 1.0; }
                 let rect = [cell_pos(x) - i + extra,

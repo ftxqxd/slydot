@@ -1,4 +1,4 @@
-use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
+use super::{Game, Grid, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
 use std::collections::VecDeque;
 use std::path::Path;
 use piston::input::{Button, Key};
@@ -7,10 +7,10 @@ use opengl_graphics::{GlGraphics, Texture};
 
 pub struct Unit {
     parts: VecDeque<(i16, i16)>,
-    len_limit: usize,
-    selected: bool,
-    moves: u16,
-    enemy: bool,
+    pub len_limit: usize,
+    pub selected: bool,
+    pub moves: u16,
+    pub enemy: bool,
     colour: [f32; 3],
     texture: Texture,
 }
@@ -21,7 +21,7 @@ impl Unit {
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back((0, 1)); v },
             len_limit: 4,
-            selected: true,
+            selected: false,
             moves: 10,
             enemy: false,
             colour: [0.0, 0.5647058823529412, 0.9882352941176471],
@@ -73,6 +73,8 @@ impl Unit {
         if let Some(idx) = self.parts.iter().position(|x| *x == new) {
             let val = self.parts.remove(idx).unwrap();
             self.parts.push_front(val);
+            self.moves -= 1;
+            self.highlight(&mut game.grid);
             return
         }
 
@@ -81,6 +83,7 @@ impl Unit {
             self.shorten();
         }
         self.moves -= 1;
+        self.highlight(&mut game.grid);
     }
 
     fn shorten(&mut self) {
@@ -103,6 +106,22 @@ impl Unit {
         self.parts.iter().any(|&p| p == (x, y))
     }
 
+    pub fn highlight(&self, grid: &mut Grid) {
+        grid.highlight.set_all();
+        grid.highlight.negate();
+        self._highlight(grid, self.moves, self.parts[0].0, self.parts[0].1);
+    }
+
+    fn _highlight(&self, grid: &mut Grid, moves: u16, x: i16, y: i16) {
+        if !grid.is_valid(x, y) { return }
+        grid.highlight.set(x as usize + y as usize*grid.width, true);
+        if moves == 0 { return }
+        self._highlight(grid, moves - 1, x + 1, y);
+        self._highlight(grid, moves - 1, x - 1, y);
+        self._highlight(grid, moves - 1, x, y + 1);
+        self._highlight(grid, moves - 1, x, y - 1);
+    }
+
     pub fn draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
@@ -111,7 +130,9 @@ impl Unit {
         parts.sort();
 
         for &&(x, y) in &parts {
-            let is_last = |coords| self.parts.len() == self.len_limit && coords == self.parts[self.parts.len() - 1];
+            let is_last = |coords|
+                self.len_limit > 1
+                && self.parts.len() == self.len_limit && coords == self.parts[self.parts.len() - 1];
             let alpha = if is_last((x, y)) { (game.frame / 3 % 2) as f32 } else { 1.0 };
             for i in -1..3 {
                 let i = i as f64;

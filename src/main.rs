@@ -3,6 +3,8 @@
 //! Any similarity between this game and *Spybot: The Nightfall Incident* is completely
 //! coincidental.
 
+#![feature(collections)]
+
 extern crate piston;
 extern crate graphics;
 extern crate sdl2_window;
@@ -37,6 +39,7 @@ fn main() {
 
     let ref mut gl = GlGraphics::new(opengl);
     let mut game = Game::sample();
+    game.select(0);
     for e in window.events() {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {

@@ -54,6 +54,12 @@ impl Game {
             && self.enemy_units.iter().all(|a| !a.occupies(x, y))
     }
 
+    pub fn select(&mut self, unit_idx: usize) {
+        self.player_units.iter_mut().map(|x| x.selected = false).count();
+        self.player_units[unit_idx].selected = true;
+        self.player_units[unit_idx].highlight(&mut self.grid);
+    }
+
     pub fn draw(&mut self, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
         clear([0.0, 0.0, 0.0, 1.0], gl);

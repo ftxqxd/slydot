@@ -1,5 +1,6 @@
 use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y};
 use std::ops::{Index, IndexMut};
+use std::collections::BitVec;
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 
@@ -11,8 +12,9 @@ pub enum Cell {
 
 #[derive(Clone, Debug)]
 pub struct Grid {
-    grid: Vec<Cell>,
-    width: usize,
+    pub grid: Vec<Cell>,
+    pub width: usize,
+    pub highlight: BitVec,
 }
 
 macro_rules! grid {
@@ -23,9 +25,11 @@ macro_rules! grid {
 
 impl Grid {
     pub fn new(grid: Vec<Cell>, width: usize) -> Grid {
+        let len = grid.len();
         Grid {
             grid: grid,
             width: width,
+            highlight: BitVec::from_elem(len, false),
         }
     }
 
@@ -38,6 +42,7 @@ impl Grid {
                         Floor Floor Floor Floor Floor Floor Floor Floor Floor
                         Empty Empty Floor Floor Floor Floor Floor Empty Empty],
             width: 9,
+            highlight: BitVec::from_elem(9 * 6, false),
         }
     }
 
@@ -53,12 +58,13 @@ impl Grid {
     pub fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
-        for (i, v) in self.grid.iter_mut().enumerate() {
+        for (i, (v, hi)) in self.grid.iter_mut().zip(self.highlight.iter()).enumerate() {
             let (x, y) = (i % self.width, i / self.width);
             match *v {
                 Cell::Empty => {},
                 Cell::Floor => {
-                    rectangle([1.0, 1.0, 1.0, 0.3],
+                    let alpha = if hi { 0.6 } else { 0.3 };
+                    rectangle([1.0, 1.0, 1.0, alpha],
                               [CELL_OFFSET_X + x as f64 * (CELL_SIZE + CELL_PADDING),
                                CELL_OFFSET_Y + y as f64 * (CELL_SIZE + CELL_PADDING),
                                CELL_SIZE, CELL_SIZE],

@@ -29,6 +29,10 @@ pub const CELL_PADDING: f64 = 4.0;
 pub const CELL_OFFSET_X: f64 = 50.0;
 pub const CELL_OFFSET_Y: f64 = 50.0;
 
+pub fn cell_pos(a: i16) -> f64 {
+    CELL_OFFSET_X + a as f64 * (CELL_SIZE + CELL_PADDING)
+}
+
 fn main() {
     let opengl = OpenGL::_3_2;
     let window = Sdl2Window::new(
@@ -49,12 +53,7 @@ fn main() {
         }
 
         if let Some(args) = e.press_args() {
-            game.for_each_player_unit(|unit, game| {
-                unit.handle_press(args, game);
-            });
-            game.for_each_enemy_unit(|unit, game| {
-                unit.handle_press(args, game);
-            });
+            game.handle_press(args);
         }
     }
 }

@@ -34,7 +34,15 @@ impl Game {
     pub fn for_player_unit<F>(&mut self, idx: usize, f: F) where F: FnOnce(&mut Unit, &mut Game) {
         let mut unit = self.player_units.remove(idx).unwrap();
         f(&mut unit, self);
-        self.player_units.insert(idx, unit);
+        //self.player_units.insert(idx, unit); XXX restore when stable
+        let mut temp = VecDeque::new();
+        for _ in 0..idx {
+            temp.push_back(self.player_units.pop_front().unwrap());
+        }
+        self.player_units.push_front(unit);
+        while let Some(u) = temp.pop_back() {
+            self.player_units.push_front(u);
+        }
     }
 
     pub fn for_each_player_unit<F>(&mut self, mut f: F) where F: FnMut(&mut Unit, &mut Game) {

@@ -1,19 +1,27 @@
-//! Slydot: The Sunrise Event – an original game written in Rust.
+//! Slydot: The Sunrise Event
+//! =========================
 //!
-//! Any similarity between this game and *Spybot: The Nightfall Incident* is completely
-//! coincidental.
-
-#![feature(collections)]
+//! An original game written in Rust.
+//!
+//! Any similarity between this game and *Spybot: The Nightfall Incident* is purely coincidental.
+//!
+//! Goals
+//! -----
+//!
+//! * Multiplayer. As a strategy battle game, multiplayer is perfectly suited for it.
+//! * Story mode.
+//! * A plethora of units and attacks.
+//! * Unit customisation?
 
 extern crate piston;
+extern crate piston_window;
 extern crate graphics;
-extern crate sdl2_window;
 extern crate opengl_graphics;
 
-use opengl_graphics::{GlGraphics, OpenGL};
-use sdl2_window::Sdl2Window;
+use piston::input::*;
 use piston::window::WindowSettings;
-use piston::event::*;
+use opengl_graphics::*;
+use piston_window::PistonWindow;
 
 pub mod game;
 pub use game::Game;
@@ -34,16 +42,17 @@ pub fn cell_pos(a: i16) -> f64 {
 }
 
 fn main() {
-    let opengl = OpenGL::_3_2;
-    let window = Sdl2Window::new(
-        opengl,
+    let opengl = OpenGL::V3_2;
+    let window: PistonWindow =
         WindowSettings::new("sunrise", [640, 480])
-    );
+        .opengl(opengl)
+        .build()
+        .unwrap();
 
     let ref mut gl = GlGraphics::new(opengl);
     let mut game = Game::sample();
     game.select(0);
-    for e in window.events() {
+    for e in window {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {
                 game.draw(&c, gl);
@@ -51,8 +60,8 @@ fn main() {
             game.frame += 1;
         }
 
-        if let Some(args) = e.press_args() {
-            game.handle_press(args);
+        if let Some(b) = e.press_args() {
+            game.handle_press(b);
         }
     }
 }

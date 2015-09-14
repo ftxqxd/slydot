@@ -146,8 +146,7 @@ impl Unit {
     }
 
     pub fn is_player(&self, game: &Game) -> bool {
-        let team = &game.teams[self.team as usize];
-        game.current_team == self.team && team.is_local_controlled()
+        game.current_team == self.team
     }
 
     // Why does `move` have to be a keyword? :(
@@ -406,7 +405,7 @@ impl Unit {
                     CELL_SIZE - 1.0, CELL_SIZE - 1.0];
         Image::new().rect(rect).draw(&self.texture, default_draw_state(), c.transform, gl);
         let border = [rect[0], rect[1], rect[2] + 3.5, rect[3] + 3.5];
-        if self.selected && self.is_player(game) {
+        if self.selected {
             Rectangle::new_border([1.0, 1.0, 1.0, 1.0 - (game.frame % 40) as f32 / 39.0], 1.0)
                 .draw(border, default_draw_state(), c.transform, gl);
         }

@@ -4,7 +4,8 @@ use piston::input::{Button, Key};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 
-use super::{Unit, Grid};
+use super::{Unit, Grid, Controller};
+use controller::{LocalController, DummyController};
 
 pub struct Game {
     pub grid: Grid,
@@ -28,8 +29,8 @@ impl Game {
             frame: 0,
             selected_idx: None,
             teams: vec![
-                Team { name: "Player".into(), local: true },
-                Team { name: "Enemy".into(), local: false },
+                Team { name: "Player".into(), controller: Box::new(LocalController) },
+                Team { name: "Enemy".into(), controller: Box::new(LocalController) },
             ],
             current_team: 0,
         }
@@ -57,10 +58,19 @@ impl Game {
         }
     }
 
-    pub fn for_grid<F>(&mut self, mut f: F) where F: FnMut(&mut Grid, &mut Game) {
+    pub fn for_grid<F>(&mut self, f: F) where F: FnOnce(&mut Grid, &mut Game) {
         let mut grid = mem::replace(&mut self.grid, Grid::new(vec![], 0));
         f(&mut grid, self);
         self.grid = grid;
+    }
+
+    pub fn for_current_team<F>(&mut self, f: F) where F: FnOnce(&mut Team, &mut Game) {
+        let cur = self.current_team as usize;
+        let mut team = mem::replace(&mut self.teams[cur],
+                                    Team { name: "Dummy".into(),
+                                           controller: Box::new(DummyController) });
+        f(&mut team, self);
+        self.teams[cur] = team;
     }
 
     pub fn is_valid(&self, x: i16, y: i16) -> bool {
@@ -78,6 +88,13 @@ impl Game {
     }
 
     pub fn select_team(&mut self, team_idx: u16) {
+        self.for_each_unit(|unit, _| {
+            unit.moves = unit.move_limit;
+            unit.has_attacked = false;
+            unit.attack = None;
+        });
+        let idx = self.units.iter().position(|x| x.team == team_idx).unwrap();
+        self.select(idx);
         self.current_team = team_idx;
     }
 
@@ -118,47 +135,12 @@ impl Game {
     
     pub fn handle_press(&mut self, args: Button) {
         match args {
-            Button::Keyboard(k) => match k {
-                Key::Left | Key::Right | Key::Up | Key::Down =>
-                    self.for_each_unit(|unit, game| {
-                        if unit.is_player(game) && unit.selected { unit.relocate(k, game); }
-                    }),
-                Key::Tab => {
-                    if let Some(idx) = self.selected_idx {
-                        if self.units[idx].attack.is_some() {
-                            self.attack_next(idx);
-                        } else {
-                            let len = self.units.len();
-                            let mut idx = idx;
-                            loop {
-                                idx += 1;
-                                idx %= len;
-                                if self.units[idx].is_player(self) { break }
-                            }
-                            self.select(idx);
-                        }
-                    }
-                },
-                Key::Q => { // XXX debugging
-                    self.for_each_unit(|unit, _| {
-                        unit.moves = unit.move_limit;
-                        unit.has_attacked = false;
-                    });
-                    let idx = self.selected_idx.unwrap_or(0);
-                    self.select(idx);
-                },
-                Key::D1 => {
-                    let idx = self.selected_idx.unwrap_or(0);
-                    self.attack(idx, 0);
-                },
-                Key::Return => {
-                    if let Some(idx) = self.selected_idx {
-                        self.fire(idx);
-                    }
-                },
-                _ => {},
+            // TODO: handle pause, etc.
+            args => {
+                self.for_current_team(|team, game| {
+                    team.controller.handle_press(game, args);
+                });
             },
-            _ => {},
         }
     }
 
@@ -180,15 +162,7 @@ impl Game {
     }
 }
 
-#[derive(Clone)]
 pub struct Team {
     pub name: String,
-    local: bool, // TODO: use a controller field (AI/local/network) for this instead
-}
-
-impl Team {
-    /// Returns true if this team is controlled by a local human player.
-    pub fn is_local_controlled(&self) -> bool {
-        self.local
-    }
+    controller: Box<Controller>,
 }

@@ -32,6 +32,9 @@ pub use unit::Unit;
 pub mod grid;
 pub use grid::Grid;
 
+pub mod controller;
+pub use controller::Controller;
+
 pub const CELL_SIZE: f64 = 28.0;
 pub const CELL_PADDING: f64 = 4.0;
 pub const CELL_OFFSET_X: f64 = 50.0;

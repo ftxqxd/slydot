@@ -4,14 +4,6 @@
 //! An original game written in Rust.
 //!
 //! Any similarity between this game and *Spybot: The Nightfall Incident* is purely coincidental.
-//!
-//! Goals
-//! -----
-//!
-//! * Multiplayer. As a strategy battle game, multiplayer is perfectly suited for it.
-//! * Story mode.
-//! * A plethora of units and attacks.
-//! * Unit customisation?
 
 extern crate piston;
 extern crate piston_window;

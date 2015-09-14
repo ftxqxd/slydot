@@ -1,5 +1,8 @@
 use std::collections::VecDeque;
 use std::mem;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 use piston::input::Button;
 use graphics::Context;
 use opengl_graphics::GlGraphics;
@@ -18,14 +21,13 @@ pub struct Game {
 
 impl Game {
     pub fn sample() -> Game {
-        let mut deque = VecDeque::new();
-        deque.push_back(Unit::sample());
-        deque.push_back(Unit::sample2());
-        deque.push_back(Unit::sample_enemy());
-        deque.push_back(Unit::sample_enemy2());
+        let mut f = File::open(Path::new("levels/test.sunrise")).unwrap();
+        let mut s = String::new();
+        f.read_to_string(&mut s).unwrap();
+        let (grid, units) = Grid::from_string(&s);
         Game {
-            grid: Grid::sample(),
-            units: deque,
+            grid: grid,
+            units: units,
             frame: 0,
             selected_idx: None,
             teams: vec![

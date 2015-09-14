@@ -1,7 +1,8 @@
-use super::{Game, CELL_SIZE, CELL_PADDING, cell_pos};
+use super::{Game, Unit, CELL_SIZE, CELL_PADDING, cell_pos};
 use std::ops::{Index, IndexMut};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
+use std::collections::VecDeque;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -35,6 +36,44 @@ impl Grid {
             attack_hi: vec![0; len],
             player_pos: None,
         }
+    }
+
+    // XXX is this the best place for this?
+    pub fn from_string(s: &str) -> (Grid, VecDeque<Unit>) {
+        let mut v = vec![];
+        let mut units = VecDeque::new();
+        let mut width = None;
+        let mut y = 0;
+        for line in s.lines() {
+            let mut x = 0;
+            for c in line.chars() {
+                match c {
+                    ' ' => v.push(Cell::Empty),
+                    '#' => v.push(Cell::Floor),
+                    // tile, player starting point, or enemy tile has floor underneath
+                    c => {
+                        v.push(Cell::Floor);
+                        units.push_back(Unit::from_char(c, (x, y)));
+                    },
+                }
+                x += 1;
+            }
+            if let Some(width) = width {
+                assert!(x == width, "width must be identical for all rows");
+            } else {
+                width = Some(x);
+            }
+            y += 1;
+        }
+        let width = width.unwrap();
+        let len = v.len();
+        (Grid {
+            grid: v,
+            width: width as usize,
+            highlight: vec![0; len],
+            attack_hi: vec![0; len],
+            player_pos: None,
+        }, units)
     }
 
     pub fn sample() -> Grid {

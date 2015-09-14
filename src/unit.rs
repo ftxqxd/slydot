@@ -85,10 +85,22 @@ impl Attack {
 }
 
 impl Unit {
-    pub fn sample() -> Unit {
+    pub fn from_char(c: char, coords: (i16, i16)) -> Unit {
+        match c {
+            'A' => Unit::sample_enemy(coords),
+            'B' => Unit::sample_enemy2(coords),
+
+            // XXX remove these later
+            '1' => Unit::sample(coords),
+            '2' => Unit::sample2(coords),
+            _ => panic!("unknown enemy code: {}", c),
+        }
+    }
+
+    pub fn sample(coords: (i16, i16)) -> Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
-            parts: { let mut v = VecDeque::new(); v.push_back((0, 1)); v },
+            parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
             selected: false,
             attack: None,
@@ -104,10 +116,10 @@ impl Unit {
         }
     }
 
-    pub fn sample2() -> Unit {
+    pub fn sample2(coords: (i16, i16)) -> Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
-            parts: { let mut v = VecDeque::new(); v.push_back((2, 0)); v },
+            parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
             selected: false,
             attack: None,
@@ -123,10 +135,10 @@ impl Unit {
         }
     }
 
-    pub fn sample_enemy() -> Unit {
+    pub fn sample_enemy(coords: (i16, i16)) -> Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
-            parts: { let mut v = VecDeque::new(); v.extend(vec![(8, 4), (7, 4), (7, 3)].into_iter()); v },
+            parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
             selected: false,
             attack: None,
@@ -142,10 +154,10 @@ impl Unit {
         }
     }
 
-    pub fn sample_enemy2() -> Unit {
+    pub fn sample_enemy2(coords: (i16, i16)) -> Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
-            parts: { let mut v = VecDeque::new(); v.extend(vec![(6, 4), (5, 4), (5, 3)].into_iter()); v },
+            parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
             selected: false,
             attack: None,

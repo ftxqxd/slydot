@@ -10,8 +10,9 @@ pub struct Unit {
     pub len_limit: usize,
     pub selected: bool,
     pub moves: u16,
+    pub move_limit: u16,
     pub has_attacked: bool,
-    pub enemy: bool,
+    pub team: u16,
     pub attack: Option<u16>,
     pub target: Option<usize>,
     pub attacks: Vec<Attack>,
@@ -20,17 +21,49 @@ pub struct Unit {
     texture: Texture,
 }
 
-#[derive(Copy, Clone)]
-pub struct Attack {
-    pub damage: u16,
-    pub range: u16,
+#[derive(Copy)]
+pub enum Attack {
+    UnitTargetting {
+        range: u16,
+        perform: fn(&mut Unit) -> bool,
+    },
+    // put GroundTargetting here for zero/one
+}
+
+impl Clone for Attack {
+    fn clone(&self) -> Attack {
+        match *self {
+            Attack::UnitTargetting { range, perform } => {
+                Attack::UnitTargetting {
+                    range: range,
+                    perform: perform,
+                }
+            }
+        }
+    }
+}
+
+macro_rules! simple_attack {
+    ($damage: expr) => {{
+        fn tmp(unit: &mut Unit) -> bool {
+            unit.damage($damage);
+            true
+        }
+        tmp
+    }}
 }
 
 impl Attack {
     pub fn sample() -> Attack {
-        Attack {
-            damage: 1,
+        Attack::UnitTargetting {
             range: 2,
+            perform: simple_attack!(1),
+        }
+    }
+
+    pub fn range(&self) -> u16 {
+        match *self {
+            Attack::UnitTargetting { range, .. } => range,
         }
     }
 }
@@ -45,8 +78,9 @@ impl Unit {
             attack: None,
             target: None,
             moves: 10,
+            move_limit: 10,
             has_attacked: false,
-            enemy: false,
+            team: 0,
             attacks: vec![Attack::sample()],
             under_attack: false,
             colour: [0.0, 0.5647058823529412, 0.9882352941176471],
@@ -63,8 +97,9 @@ impl Unit {
             attack: None,
             target: None,
             moves: 10,
+            move_limit: 10,
             has_attacked: false,
-            enemy: false,
+            team: 0,
             attacks: vec![Attack::sample()],
             under_attack: false,
             colour: [0.5647058823529412, 0.9882352941176471, 0.0],
@@ -81,8 +116,9 @@ impl Unit {
             attack: None,
             target: None,
             moves: 4,
+            move_limit: 4,
             has_attacked: false,
-            enemy: true,
+            team: 1,
             attacks: vec![Attack::sample()],
             under_attack: false,
             colour: [0.5647058823529412, 0.0, 0.9882352941176471],
@@ -99,13 +135,19 @@ impl Unit {
             attack: None,
             target: None,
             moves: 4,
+            move_limit: 4,
             has_attacked: false,
-            enemy: true,
+            team: 1,
             attacks: vec![Attack::sample()],
             under_attack: false,
             colour: [0.5647058823529412, 1.0, 0.9882352941176471],
             texture: tex,
         }
+    }
+
+    pub fn is_player(&self, game: &Game) -> bool {
+        let team = &game.teams[self.team as usize];
+        game.current_team == self.team && team.is_local_controlled()
     }
 
     // Why does `move` have to be a keyword? :(
@@ -171,7 +213,7 @@ impl Unit {
         game.clear_highlight();
         if let Some(attack) = self.attack {
             let attack = self.attacks[attack as usize];
-            self._attack_highlight(game, attack.range, self.parts[0].0, self.parts[0].1);
+            self._attack_highlight(game, attack.range(), self.parts[0].0, self.parts[0].1);
             return
         }
         self._highlight(game, self.moves, self.parts[0].0, self.parts[0].1);
@@ -209,29 +251,31 @@ impl Unit {
     pub fn attack(&mut self, game: &mut Game, attack: u16) {
         if self.has_attacked { return }
         game.clear_highlight();
-        let range = self.attacks[attack as usize].range;
         self.attack = Some(attack);
-        self.target = self.next_target(game, 0, range);
+        let at = self.attacks[attack as usize];
+        self.target = self.next_target(game, 0, at);
         self.highlight(game);
     }
 
     pub fn attack_next(&mut self, game: &mut Game) {
         if let Some(cur) = self.target {
             let a = self.attack.unwrap();
-            let range = self.attacks[a as usize].range;
-            let target = self.next_target(game, cur, range);
+            let at = self.attacks[a as usize];
+            let target = self.next_target(game, cur, at);
             self.target = target;
         }
     }
 
-    fn next_target(&self, game: &mut Game, cur: usize, range: u16) -> Option<usize> {
+    fn next_target(&mut self, game: &mut Game, cur: usize, attack: Attack) -> Option<usize> {
         use std::cmp::min;
+        // Invariant: current attack must be a Attack::UnitTargetting
+        let range = attack.range();
         let mut next = None;
         let ppos = self.parts[0];
-        let len = game.enemy_units.len();
-        'outer: for (i, enemy) in game.enemy_units.iter().enumerate() {
-            for epos in &enemy.parts {
-                if ((ppos.0 - epos.0).abs() as u16) + ((ppos.1 - epos.1).abs() as u16) <= range {
+        let len = game.units.len();
+        'outer: for (i, unit) in game.units.iter().enumerate() {
+            for upos in &unit.parts {
+                if ((ppos.0 - upos.0).abs() as u16) + ((ppos.1 - upos.1).abs() as u16) <= range {
                     let pos = if i <= cur { i + len } else { i };
                     if let Some(next) = next.as_mut() {
                         *next = min(*next, pos);
@@ -243,8 +287,8 @@ impl Unit {
         }
         let next = next.map(|x| x % len);
         if let Some(next) = next {
-            game.enemy_units[cur].under_attack = false;
-            game.enemy_units[next].under_attack = true;
+            game.units[cur].under_attack = false;
+            game.units[next].under_attack = true;
         }
         next
     }
@@ -252,19 +296,21 @@ impl Unit {
     pub fn fire(&mut self, game: &mut Game) {
         let mut target_is_kill = false;
         if let (Some(atk), Some(ti)) = (self.attack, self.target) {
-            let target = &mut game.enemy_units[ti];
-            let damage = self.attacks[atk as usize].damage;
-            if target.parts.len() <= damage as usize {
+            let target = &mut game.units[ti];
+            match self.attacks[atk as usize] {
+                Attack::UnitTargetting { perform, .. } => {
+                    perform(target);
+                }
+            }
+            if target.parts.len() == 0 {
                 target_is_kill = true;
-            } else {
-                target.damage(self.attacks[atk as usize].damage);
             }
             self.moves = 0;
             self.has_attacked = true;
         }
         if target_is_kill {
             // no
-            game.enemy_units.remove(self.target.unwrap());
+            game.units.remove(self.target.unwrap());
             self.target = None;
         }
         self.leave_attack(game);
@@ -272,7 +318,7 @@ impl Unit {
 
     pub fn leave_attack(&mut self, game: &mut Game) {
         if let Some(t) = self.target {
-            game.enemy_units[t].under_attack = false;
+            game.units[t].under_attack = false;
         }
         self.attack = None;
         self.target = None;
@@ -360,7 +406,7 @@ impl Unit {
                     CELL_SIZE - 1.0, CELL_SIZE - 1.0];
         Image::new().rect(rect).draw(&self.texture, default_draw_state(), c.transform, gl);
         let border = [rect[0], rect[1], rect[2] + 3.5, rect[3] + 3.5];
-        if self.selected && !self.enemy {
+        if self.selected && self.is_player(game) {
             Rectangle::new_border([1.0, 1.0, 1.0, 1.0 - (game.frame % 40) as f32 / 39.0], 1.0)
                 .draw(border, default_draw_state(), c.transform, gl);
         }

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::mem;
-use piston::input::{Button, Key};
+use piston::input::Button;
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 

@@ -1,4 +1,4 @@
-use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_pos};
+use super::{Game, Grid, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_pos};
 use std::collections::VecDeque;
 use std::path::Path;
 use piston::input::Key;
@@ -25,9 +25,16 @@ pub struct Unit {
 pub enum Attack {
     UnitTargetting {
         range: u16,
-        perform: fn(&mut Unit) -> bool,
+        perform: fn(&mut Unit, &mut Unit) -> bool,
     },
-    // put GroundTargetting here for zero/one
+    GroundTargetting {
+        range: u16,
+        /// Can the attack target solid tiles?
+        full: bool,
+        /// Can the attack target empty tiles?
+        empty: bool,
+        perform: fn(&mut Unit, &mut Grid, (i16, i16)) -> bool,
+    },
 }
 
 impl Clone for Attack {
@@ -39,13 +46,21 @@ impl Clone for Attack {
                     perform: perform,
                 }
             }
+            Attack::GroundTargetting { range, full, empty, perform } => {
+                Attack::GroundTargetting {
+                    range: range,
+                    full: full,
+                    empty: empty,
+                    perform: perform,
+                }
+            }
         }
     }
 }
 
 macro_rules! simple_attack {
     ($damage: expr) => {{
-        fn tmp(unit: &mut Unit) -> bool {
+        fn tmp(_: &mut Unit, unit: &mut Unit) -> bool {
             unit.damage($damage);
             true
         }
@@ -63,7 +78,8 @@ impl Attack {
 
     pub fn range(&self) -> u16 {
         match *self {
-            Attack::UnitTargetting { range, .. } => range,
+            Attack::UnitTargetting { range, .. }
+            | Attack::GroundTargetting { range, .. } => range,
         }
     }
 }
@@ -298,8 +314,11 @@ impl Unit {
             let target = &mut game.units[ti];
             match self.attacks[atk as usize] {
                 Attack::UnitTargetting { perform, .. } => {
-                    perform(target);
-                }
+                    perform(self, target);
+                },
+                Attack::GroundTargetting { .. } => {
+                    unimplemented!()
+                },
             }
             if target.parts.len() == 0 {
                 target_is_kill = true;

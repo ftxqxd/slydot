@@ -1,5 +1,5 @@
 [root]
-name = "sunrise"
+name = "slydot"
 version = "0.0.0"
 dependencies = [
  "piston 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",

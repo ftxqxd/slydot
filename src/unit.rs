@@ -14,9 +14,7 @@ pub struct Unit {
     pub has_attacked: bool,
     pub team: u16,
     pub attack: Option<u16>,
-    pub target: Option<usize>,
     pub attacks: Vec<Attack>,
-    pub under_attack: bool,
     colour: [f32; 3],
     texture: Texture,
 }
@@ -71,7 +69,7 @@ macro_rules! simple_attack {
 impl Attack {
     pub fn sample() -> Attack {
         Attack::UnitTargetting {
-            range: 2,
+            range: 4,
             perform: simple_attack!(1),
         }
     }
@@ -104,13 +102,11 @@ impl Unit {
             len_limit: 4,
             selected: false,
             attack: None,
-            target: None,
             moves: 10,
             move_limit: 10,
             has_attacked: false,
             team: 0,
             attacks: vec![Attack::sample()],
-            under_attack: false,
             colour: [0.0, 0.5647058823529412, 0.9882352941176471],
             texture: tex,
         }
@@ -123,13 +119,11 @@ impl Unit {
             len_limit: 4,
             selected: false,
             attack: None,
-            target: None,
             moves: 10,
             move_limit: 10,
             has_attacked: false,
             team: 0,
             attacks: vec![Attack::sample()],
-            under_attack: false,
             colour: [0.5647058823529412, 0.9882352941176471, 0.0],
             texture: tex,
         }
@@ -142,13 +136,11 @@ impl Unit {
             len_limit: 4,
             selected: false,
             attack: None,
-            target: None,
             moves: 4,
             move_limit: 4,
             has_attacked: false,
             team: 1,
             attacks: vec![Attack::sample()],
-            under_attack: false,
             colour: [0.5647058823529412, 0.0, 0.9882352941176471],
             texture: tex,
         }
@@ -161,13 +153,11 @@ impl Unit {
             len_limit: 4,
             selected: false,
             attack: None,
-            target: None,
             moves: 4,
             move_limit: 4,
             has_attacked: false,
             team: 1,
             attacks: vec![Attack::sample()],
-            under_attack: false,
             colour: [0.5647058823529412, 1.0, 0.9882352941176471],
             texture: tex,
         }
@@ -200,8 +190,8 @@ impl Unit {
             _ => panic!("Unit::relocate didn’t receive a direction key"),
         }
 
+        if self.attack.is_some() { self.move_target(game, dx, dy); return }
         if self.moves == 0 { return }
-        if self.attack.is_some() { return }
 
         let (headx, heady) = self.parts[0];
         let new = (headx + dx, heady + dy);
@@ -264,10 +254,11 @@ impl Unit {
     }
 
     fn _attack_highlight(&self, game: &mut Game, moves: u16, x: i16, y: i16) {
-        if !game.grid.is_valid(x, y) { return }
-        let pos = x as usize + y as usize*game.grid.width;
-        if game.grid.attack_hi[pos] >= moves + 1 { return }
-        game.grid.attack_hi[pos] = moves + 1;
+        if game.grid.is_valid(x, y) {
+            let pos = x as usize + y as usize*game.grid.width;
+            if game.grid.attack_hi[pos] >= moves + 1 { return }
+            game.grid.attack_hi[pos] = moves + 1;
+        }
         if moves == 0 { return }
         self._attack_highlight(game, moves - 1, x + 1, y);
         self._attack_highlight(game, moves - 1, x - 1, y);
@@ -279,91 +270,81 @@ impl Unit {
         if self.has_attacked { return }
         game.clear_highlight();
         self.attack = Some(attack);
-        let at = self.attacks[attack as usize];
-        self.target = self.next_target(game, 0, at);
+        game.grid.attack_loc = Some(self.parts[0]);
         self.highlight(game);
     }
 
-    pub fn attack_next(&mut self, game: &mut Game) {
-        if let Some(cur) = self.target {
-            let a = self.attack.unwrap();
-            let at = self.attacks[a as usize];
-            let target = self.next_target(game, cur, at);
-            self.target = target;
-        }
-    }
-
-    fn next_target(&mut self, game: &mut Game, cur: usize, attack: Attack) -> Option<usize> {
-        use std::cmp::min;
-        // Invariant: current attack must be a Attack::UnitTargetting
+    fn move_target(&mut self, game: &mut Game, dx: i16, dy: i16) {
+        // move_target should only be called when attack_loc & self.attack are Some
+        let attack_loc = game.grid.attack_loc.as_mut().unwrap();
+        let attack = self.attacks[self.attack.unwrap() as usize];
         let range = attack.range();
-        let mut next = None;
-        let ppos = self.parts[0];
-        let len = game.units.len();
-        'outer: for (i, unit) in game.units.iter().enumerate() {
-            for upos in &unit.parts {
-                if ((ppos.0 - upos.0).abs() as u16) + ((ppos.1 - upos.1).abs() as u16) <= range {
-                    let pos = if i <= cur { i + len } else { i };
-                    if let Some(next) = next.as_mut() {
-                        *next = min(*next, pos);
-                        continue 'outer
-                    }
-                    next = Some(pos);
-                }
+        let (mut tx, mut ty) = *attack_loc;
+
+        let width = game.grid.width as i16;
+        let idx = tx + dx + width * (ty + dy);
+        if idx < 0 || idx >= game.grid.attack_hi.len() as i16 { return }
+        if game.grid.attack_hi[idx as usize] > 0 {
+            *attack_loc = (tx + dx, ty + dy);
+            return
+        }
+        let mut done = false;
+        for _ in 0..range {
+            let idx = tx + dx + width * (ty + dy);
+            if idx < 0 || idx >= game.grid.attack_hi.len() as i16 { break }
+            if game.grid.attack_hi[idx as usize] > 0 {
+                done = true; // this would be great with for…else…
+                break
             }
+            tx += dx;
+            ty += dy;
         }
-        let next = next.map(|x| x % len);
-        if let Some(next) = next {
-            game.units[cur].under_attack = false;
-            game.units[next].under_attack = true;
+        if done {
+            *attack_loc = (tx + dx, ty + dy);
         }
-        next
     }
 
     pub fn fire(&mut self, game: &mut Game) {
-        let mut target_is_kill = false;
-        if let (Some(atk), Some(ti)) = (self.attack, self.target) {
-            let target = &mut game.units[ti];
+        debug_assert!(self.attack.is_some());
+        if let Some(atk) = self.attack {
+            let coords = game.grid.attack_loc.unwrap();
             match self.attacks[atk as usize] {
                 Attack::UnitTargetting { perform, .. } => {
-                    perform(self, target);
+                    if let Some(idx) = game.units.iter_mut().position(|unit| {
+                        for &ucoords in &unit.parts {
+                            if coords == ucoords { return true }
+                        }
+                        false
+                    }) {
+                        let mut target_is_kill = false;
+                        {
+                            let target = &mut game.units[idx];
+                            perform(self, target);
+                            if target.parts.len() == 0 {
+                                target_is_kill = true;
+                            }
+                            self.moves = 0;
+                            self.has_attacked = true;
+                        }
+                        if target_is_kill {
+                            // no
+                            game.units.remove(idx);
+                        }
+                    }
                 },
-                Attack::GroundTargetting { .. } => {
-                    unimplemented!()
-                },
+                Attack::GroundTargetting { .. } => unimplemented!(),
             }
-            if target.parts.len() == 0 {
-                target_is_kill = true;
-            }
-            self.moves = 0;
-            self.has_attacked = true;
+            self.leave_attack(game);
         }
-        if target_is_kill {
-            // no
-            game.units.remove(self.target.unwrap());
-            self.target = None;
-        }
-        self.leave_attack(game);
     }
 
     pub fn leave_attack(&mut self, game: &mut Game) {
-        if let Some(t) = self.target {
-            game.units[t].under_attack = false;
-        }
         self.attack = None;
-        self.target = None;
+        game.grid.attack_loc = None;
         self.highlight(game);
     }
 
     pub fn draw(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
-        if self.under_attack { return }
-
-        self._draw(game, c, gl);
-    }
-
-    pub fn draw_late(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
-        if !self.under_attack { return }
-
         self._draw(game, c, gl);
     }
 
@@ -384,19 +365,10 @@ impl Unit {
             let alpha = if is_last((x, y)) { (game.frame / 3 % 2) as f32 } else { 1.0 };
             for i in -1..3 {
                 let i = i as f64;
-                let mut colour = if self.under_attack {
-                    let t = (game.frame % 40) as f32 / 39.0;
-                    let r2 = r * t + (1.0 - t);
-                    [[r2 * 0.6, g * t   , b * t   , alpha],
-                     [r2 * 0.6, g * t   , b * t   , alpha],
-                     [r2 * 0.6, g * t   , b * t   , alpha],
-                     [r2      , g * t   , b * t   , alpha]][(i + 1.0) as usize]
-                } else {
-                    [[r * 0.57, g * 0.57, b * 0.57, alpha],
-                     [r * 0.57, g * 0.57, b * 0.57, alpha],
-                     [r * 0.57, g * 0.57, b * 0.57, alpha],
-                     [r       , g       , b       , alpha]][(i + 1.0) as usize]
-                };
+                let mut colour = [[r * 0.57, g * 0.57, b * 0.57, alpha],
+                                  [r * 0.57, g * 0.57, b * 0.57, alpha],
+                                  [r * 0.57, g * 0.57, b * 0.57, alpha],
+                                  [r       , g       , b       , alpha]][(i + 1.0) as usize];
                 let mut extra = 0.0;
                 if i == 2.0 { extra = 1.0; }
                 let rect = [cell_pos(x) - i + extra,
@@ -435,7 +407,7 @@ impl Unit {
                     CELL_OFFSET_Y + y as f64 * (CELL_SIZE + CELL_PADDING) - 1.0,
                     CELL_SIZE - 1.0, CELL_SIZE - 1.0];
         Image::new().rect(rect).draw(&self.texture, default_draw_state(), c.transform, gl);
-        let border = [rect[0], rect[1], rect[2] + 3.5, rect[3] + 3.5];
+        let border = [rect[0], rect[1], rect[2] + 3.5, rect[3] + 2.5];
         if self.selected {
             Rectangle::new_border([1.0, 1.0, 1.0, 1.0 - (game.frame % 40) as f32 / 39.0], 1.0)
                 .draw(border, default_draw_state(), c.transform, gl);

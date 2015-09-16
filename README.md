@@ -26,7 +26,14 @@ Progress
 ### Longer-term goals
 
 - GUI
+- Animations
+  - For example: losing cells on a unit makes those tiles sink into the ground
 - Story mode
 - Actual units and attacks (with names and everything)
   - Unit customisation?
 - Multiplayer
+
+### Other ideas (may not be realised)
+
+- Fog-of-war levels (every level?) where the terrain & enemies are not visible
+  unless they are in sight

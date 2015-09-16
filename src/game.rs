@@ -61,7 +61,7 @@ impl Game {
     }
 
     pub fn for_grid<F>(&mut self, f: F) where F: FnOnce(&mut Grid, &mut Game) {
-        let mut grid = mem::replace(&mut self.grid, Grid::new(vec![], 0));
+        let mut grid = mem::replace(&mut self.grid, Grid::dummy());
         f(&mut grid, self);
         self.grid = grid;
     }
@@ -110,12 +110,6 @@ impl Game {
         });
     }
 
-    pub fn attack_next(&mut self, unit_idx: usize) {
-        self.for_unit(unit_idx, |unit, game| {
-            unit.attack_next(game);
-        });
-    }
-
     pub fn fire(&mut self, unit_idx: usize) {
         self.for_unit(unit_idx, |unit, game| {
             unit.fire(game);
@@ -134,7 +128,7 @@ impl Game {
         self.grid.attack_hi.iter_mut().map(|x| *x = 0).count();
         self.grid.player_pos = None;
     }
-    
+
     pub fn handle_press(&mut self, args: Button) {
         match args {
             // TODO: handle pause, etc.
@@ -157,9 +151,6 @@ impl Game {
         });
         self.for_grid(|grid, game| {
             grid.draw_overlay(game, &c, gl);
-        });
-        self.for_each_unit(|unit, game| {
-            unit.draw_late(game, &c, gl);
         });
     }
 }

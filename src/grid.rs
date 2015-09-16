@@ -1,7 +1,8 @@
 use super::{Game, Unit, CELL_SIZE, CELL_PADDING, cell_pos};
 use std::ops::{Index, IndexMut};
+use std::path::Path;
 use graphics::Context;
-use opengl_graphics::GlGraphics;
+use opengl_graphics::{GlGraphics, Texture};
 use std::collections::VecDeque;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -10,14 +11,15 @@ pub enum Cell {
     Floor,
 }
 
-#[derive(Clone, Debug)]
 pub struct Grid {
     pub grid: Vec<Cell>,
     pub width: usize,
     pub highlight: Vec<u16>,
     pub attack_hi: Vec<u16>,
+    pub attack_loc: Option<(i16, i16)>,
     /// `None` when the player has no moves left or when no unit is selected.
     pub player_pos: Option<(i16, i16)>,
+    tx_crosshair: Texture,
 }
 
 macro_rules! grid {
@@ -27,14 +29,16 @@ macro_rules! grid {
 }
 
 impl Grid {
-    pub fn new(grid: Vec<Cell>, width: usize) -> Grid {
-        let len = grid.len();
+    pub fn dummy() -> Grid {
+        let tex = Texture::from_memory_alpha(&[], 0, 0).unwrap();
         Grid {
-            grid: grid,
-            width: width,
-            highlight: vec![0; len],
-            attack_hi: vec![0; len],
+            grid: vec![],
+            width: 0,
+            highlight: vec![],
+            attack_hi: vec![],
+            attack_loc: None,
             player_pos: None,
+            tx_crosshair: tex,
         }
     }
 
@@ -67,16 +71,20 @@ impl Grid {
         }
         let width = width.unwrap();
         let len = v.len();
+        let tex = Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap();
         (Grid {
             grid: v,
             width: width as usize,
             highlight: vec![0; len],
             attack_hi: vec![0; len],
+            attack_loc: None,
             player_pos: None,
+            tx_crosshair: tex,
         }, units)
     }
 
     pub fn sample() -> Grid {
+        let tex = Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap();
         Grid {
             grid: grid![Empty Empty Floor Floor Floor Floor Floor Empty Empty
                         Floor Floor Floor Floor Floor Floor Floor Floor Floor
@@ -87,7 +95,9 @@ impl Grid {
             width: 9,
             highlight: vec![0; 9 * 6],
             attack_hi: vec![0; 9 * 6],
+            attack_loc: None,
             player_pos: None,
+            tx_crosshair: tex,
         }
     }
 
@@ -97,7 +107,7 @@ impl Grid {
 
     pub fn is_valid(&self, x: i16, y: i16) -> bool {
         if x < 0 || y < 0 || x >= self.width as i16 || y >= self.height() as i16 { return false }
-        self[(x as usize, y as usize)] != Cell::Empty
+        self[(x, y)] != Cell::Empty
     }
 
     pub fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
@@ -108,8 +118,9 @@ impl Grid {
             match *v {
                 Cell::Empty => {},
                 Cell::Floor => {
-                    let alpha = if hi != 0 { 0.6 } else { 0.3 };
-                    rectangle([1.0, 1.0, 1.0, alpha],
+                    let mut alpha = if hi != 0 { 0.6 } else { 0.3 };
+                    let gb = if self.attack_hi[i] > 0 { alpha = 0.3; 0.0 } else { 1.0 };
+                    rectangle([1.0, gb, gb, alpha],
                               [cell_pos(x as i16),
                                cell_pos(y as i16),
                                CELL_SIZE, CELL_SIZE],
@@ -120,7 +131,7 @@ impl Grid {
         }
     }
 
-    pub fn draw_overlay(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
+    pub fn draw_overlay(&mut self, game: &Game, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
 
         if let Some((px, py)) = self.player_pos {
@@ -159,31 +170,31 @@ impl Grid {
             }
         }
 
-        for (i, &ah) in self.attack_hi.iter().enumerate() {
-            let (x, y) = (i % self.width, i / self.width);
-            if ah != 0 {
-                rectangle([1.0, 0.0, 0.0, 0.6],
-                          [cell_pos(x as i16) - 2.0,
-                           cell_pos(y as i16) - 2.0,
-                           CELL_SIZE + 4.0, CELL_SIZE + 4.0],
-                          c.transform,
-                          gl);
-            }
+
+        // XXX there is some kind of newly-introduced lag, I think
+        // Look at how slowly the tail blinks
+        if let Some((x, y)) = self.attack_loc {
+            let rect = [cell_pos(x as i16) - 2.0,
+                        cell_pos(y as i16) - 2.0,
+                        CELL_SIZE + 4.0, CELL_SIZE + 4.0];
+            let alpha = 1.0 - (game.frame % 20) as f32 / 38.0;
+            Image::new().rect(rect).color([1.0, 1.0, 1.0, alpha])
+                .draw(&self.tx_crosshair, default_draw_state(), c.transform, gl);
         }
     }
 }
 
-impl Index<(usize, usize)> for Grid {
+impl Index<(i16, i16)> for Grid {
     type Output = Cell;
-    fn index(&self, (x, y): (usize, usize)) -> &Cell {
+    fn index(&self, (x, y): (i16, i16)) -> &Cell {
         let width = self.width;
-        &self.grid[x + width*y]
+        &self.grid[x as usize + width*y as usize]
     }
 }
 
-impl IndexMut<(usize, usize)> for Grid {
-    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Cell {
+impl IndexMut<(i16, i16)> for Grid {
+    fn index_mut(&mut self, (x, y): (i16, i16)) -> &mut Cell {
         let width = self.width;
-        &mut self.grid[x + width*y]
+        &mut self.grid[x as usize + width*y as usize]
     }
 }

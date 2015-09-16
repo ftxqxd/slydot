@@ -25,9 +25,7 @@ impl Controller for LocalController {
                     }),
                 Key::Tab => {
                     if let Some(idx) = game.selected_idx {
-                        if game.units[idx].attack.is_some() {
-                            game.attack_next(idx);
-                        } else {
+                        if game.units[idx].attack.is_none() {
                             let len = game.units.len();
                             let mut idx = idx;
                             loop {

@@ -14,6 +14,7 @@ Progress
 - Keyboard controls
 - Movement
 - Simple enemy-targetting attacks
+- Self-targetting attacks
 - Loading levels from files
 
 ### Coming soon (hopefully)
@@ -21,7 +22,6 @@ Progress
 - Mouse controls
 - AI players
 - Floor-targetting attacks
-- Self-targetting attacks
 
 ### Longer-term goals
 

@@ -6,7 +6,7 @@ use graphics::Context;
 use opengl_graphics::{GlGraphics, Texture};
 
 pub struct Unit {
-    parts: VecDeque<(i16, i16)>,
+    pub parts: VecDeque<(i16, i16)>,
     pub len_limit: usize,
     pub selected: bool,
     pub moves: u16,
@@ -23,7 +23,8 @@ pub struct Unit {
 pub enum Attack {
     UnitTargetting {
         range: u16,
-        perform: fn(&mut Unit, &mut Unit) -> bool,
+        /// When the second parameter is `None`, the unit is attacking itself.
+        perform: fn(&mut Unit, Option<&mut Unit>) -> bool,
     },
     GroundTargetting {
         range: u16,
@@ -58,8 +59,11 @@ impl Clone for Attack {
 
 macro_rules! simple_attack {
     ($damage: expr) => {{
-        fn tmp(_: &mut Unit, unit: &mut Unit) -> bool {
-            unit.damage($damage);
+        fn tmp(slf: &mut Unit, unit: Option<&mut Unit>) -> bool {
+            match unit {
+                Some(unit) => unit.damage($damage),
+                None => slf.damage($damage),
+            }
             true
         }
         tmp
@@ -227,6 +231,7 @@ impl Unit {
     }
 
     pub fn highlight(&self, game: &mut Game) {
+        if self.parts.len() == 0 { return }
         game.clear_highlight();
         if let Some(attack) = self.attack {
             let attack = self.attacks[attack as usize];
@@ -319,7 +324,7 @@ impl Unit {
                         let mut target_is_kill = false;
                         {
                             let target = &mut game.units[idx];
-                            perform(self, target);
+                            perform(self, Some(target));
                             if target.parts.len() == 0 {
                                 target_is_kill = true;
                             }
@@ -329,6 +334,13 @@ impl Unit {
                         if target_is_kill {
                             // no
                             game.units.remove(idx);
+                        }
+                    } else {
+                        if self.parts.iter().find(|&&x| x == coords).is_some() {
+                            perform(self, None);
+                            self.moves = 0;
+                            self.has_attacked = true;
+                            // deleting self if self.parts.len() == 0 is done in game.rs, fn fire
                         }
                     }
                 },

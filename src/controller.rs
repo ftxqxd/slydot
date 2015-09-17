@@ -24,18 +24,7 @@ impl Controller for LocalController {
                         if unit.is_player(game) && unit.selected { unit.relocate(k, game); }
                     }),
                 Key::Tab => {
-                    if let Some(idx) = game.selected_idx {
-                        if game.units[idx].attack.is_none() {
-                            let len = game.units.len();
-                            let mut idx = idx;
-                            loop {
-                                idx += 1;
-                                idx %= len;
-                                if game.units[idx].is_player(game) { break }
-                            }
-                            game.select(idx);
-                        }
-                    }
+                    game.select_next();
                 },
                 Key::Q => { // XXX debugging
                     game.for_each_unit(|unit, _| {

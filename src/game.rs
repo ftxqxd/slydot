@@ -114,6 +114,31 @@ impl Game {
         self.for_unit(unit_idx, |unit, game| {
             unit.fire(game);
         });
+        if self.units[unit_idx].parts.len() == 0 {
+            self.units.remove(unit_idx);
+            let idx = self.units.iter().position(|x| x.is_player(self));
+            if let Some(idx) = idx {
+                self.select(idx);
+                self.for_unit(idx, |unit, game| {
+                    unit.highlight(game);
+                });
+            }
+        }
+    }
+
+    pub fn select_next(&mut self) {
+        if let Some(idx) = self.selected_idx {
+            if self.units[idx].attack.is_none() {
+                let len = self.units.len();
+                let mut idx = idx;
+                loop {
+                    idx += 1;
+                    idx %= len;
+                    if self.units[idx].is_player(self) { break }
+                }
+                self.select(idx);
+            }
+        }
     }
 
     pub fn deselect(&mut self) {

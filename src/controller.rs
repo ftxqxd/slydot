@@ -38,6 +38,10 @@ impl Controller for LocalController {
                     let idx = game.selected_idx.unwrap_or(0);
                     game.attack(idx, 0);
                 },
+                Key::D2 => {
+                    let idx = game.selected_idx.unwrap_or(0);
+                    game.attack(idx, 1);
+                },
                 Key::Return => {
                     if let Some(idx) = game.selected_idx {
                         game.fire(idx);

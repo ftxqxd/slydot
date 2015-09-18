@@ -106,8 +106,12 @@ impl Grid {
     }
 
     pub fn is_valid(&self, x: i16, y: i16) -> bool {
-        if x < 0 || y < 0 || x >= self.width as i16 || y >= self.height() as i16 { return false }
+        if !self.is_in_bounds(x, y) { return false }
         self[(x, y)] != Cell::Empty
+    }
+
+    pub fn is_in_bounds(&self, x: i16, y: i16) -> bool {
+        x >= 0 && y >= 0 && x < self.width as i16 && y < self.height() as i16
     }
 
     pub fn draw(&mut self, _: &Game, c: &Context, gl: &mut GlGraphics) {
@@ -116,8 +120,8 @@ impl Grid {
         for (i, (v, &hi)) in self.grid.iter_mut().zip(self.highlight.iter()).enumerate() {
             let (x, y) = (i % self.width, i / self.width);
             match *v {
-                Cell::Empty => {},
-                Cell::Floor => {
+                Cell::Empty if self.attack_hi[i] == 0 => {},
+                _ => {
                     let mut alpha = if hi != 0 { 0.6 } else { 0.3 };
                     let gb = if self.attack_hi[i] > 0 { alpha = 0.3; 0.0 } else { 1.0 };
                     rectangle([1.0, gb, gb, alpha],

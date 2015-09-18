@@ -1,4 +1,5 @@
-use super::{Game, Grid, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_pos};
+use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_pos};
+use grid::Cell;
 use std::collections::VecDeque;
 use std::path::Path;
 use piston::input::Key;
@@ -32,7 +33,7 @@ pub enum Attack {
         full: bool,
         /// Can the attack target empty tiles?
         empty: bool,
-        perform: fn(&mut Unit, &mut Grid, (i16, i16)) -> bool,
+        perform: fn(&mut Unit, &mut Game, (i16, i16)) -> bool,
     },
 }
 
@@ -78,6 +79,19 @@ impl Attack {
         }
     }
 
+    pub fn sample_ground() -> Attack {
+        fn add_tile(_: &mut Unit, game: &mut Game, coords: (i16, i16)) -> bool {
+            game.grid[coords] = Cell::Floor;
+            true
+        }
+        Attack::GroundTargetting {
+            range: 3,
+            full: false,
+            empty: true,
+            perform: add_tile,
+        }
+    }
+
     pub fn range(&self) -> u16 {
         match *self {
             Attack::UnitTargetting { range, .. }
@@ -110,7 +124,7 @@ impl Unit {
             move_limit: 10,
             has_attacked: false,
             team: 0,
-            attacks: vec![Attack::sample()],
+            attacks: vec![Attack::sample(), Attack::sample_ground()],
             colour: [0.0, 0.5647058823529412, 0.9882352941176471],
             texture: tex,
         }
@@ -259,7 +273,27 @@ impl Unit {
     }
 
     fn _attack_highlight(&self, game: &mut Game, moves: u16, x: i16, y: i16) {
-        if game.grid.is_valid(x, y) {
+        let mut good = true;
+        let mut allow_empty = false;
+        if let Some(attack) = self.attack {
+            let atk = self.attacks[attack as usize];
+            match atk {
+                Attack::GroundTargetting { full, empty, .. } => {
+                    if !game.grid.is_in_bounds(x, y) {
+                        good = false
+                    } else {
+                        if (full || game.grid[(x, y)] != Cell::Floor)
+                        && (empty || game.grid[(x, y)] != Cell::Empty) {
+                            allow_empty = true;
+                        } else {
+                            good = false;
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+        if good && (allow_empty || game.grid.is_valid(x, y)) {
             let pos = x as usize + y as usize*game.grid.width;
             if game.grid.attack_hi[pos] >= moves + 1 { return }
             game.grid.attack_hi[pos] = moves + 1;
@@ -282,30 +316,29 @@ impl Unit {
     fn move_target(&mut self, game: &mut Game, dx: i16, dy: i16) {
         // move_target should only be called when attack_loc & self.attack are Some
         let attack_loc = game.grid.attack_loc.as_mut().unwrap();
-        let attack = self.attacks[self.attack.unwrap() as usize];
-        let range = attack.range();
-        let (mut tx, mut ty) = *attack_loc;
+        let (tx, ty) = *attack_loc;
 
         let width = game.grid.width as i16;
-        let idx = tx + dx + width * (ty + dy);
-        if idx < 0 || idx >= game.grid.attack_hi.len() as i16 { return }
-        if game.grid.attack_hi[idx as usize] > 0 {
-            *attack_loc = (tx + dx, ty + dy);
-            return
-        }
-        let mut done = false;
-        for _ in 0..range {
-            let idx = tx + dx + width * (ty + dy);
-            if idx < 0 || idx >= game.grid.attack_hi.len() as i16 { break }
-            if game.grid.attack_hi[idx as usize] > 0 {
-                done = true; // this would be great with for…else…
-                break
+        if let Some((_, (x, y))) = game.grid.attack_hi.iter().cloned().enumerate()
+                                       .filter_map(|(idx, v)| {
+            if v == 0 { return None }
+            let idx = idx as i16;
+            let (x, y) = (idx % width, idx / width);
+            if dx == 1 && x <= tx
+            || dx == -1 && x >= tx
+            || dy == 1 && y <= ty
+            || dy == -1 && y >= ty { return None }
+            let (r0, r1);
+            if dy == 0 {
+                r0 = (y - ty).abs();
+                r1 = (x - tx).abs();
+            } else {
+                r0 = (x - tx).abs();
+                r1 = (y - ty).abs();
             }
-            tx += dx;
-            ty += dy;
-        }
-        if done {
-            *attack_loc = (tx + dx, ty + dy);
+            Some(((r0, r1), (x, y)))
+        }).min() {
+            *attack_loc = (x, y);
         }
     }
 
@@ -344,7 +377,14 @@ impl Unit {
                         }
                     }
                 },
-                Attack::GroundTargetting { .. } => unimplemented!(),
+                Attack::GroundTargetting { perform, full, empty, .. } => {
+                    if (full || game.grid[coords] != Cell::Floor)
+                    && (empty || game.grid[coords] != Cell::Empty) {
+                        perform(self, game, coords);
+                        self.moves = 0;
+                        self.has_attacked = true;
+                    }
+                },
             }
             self.leave_attack(game);
         }

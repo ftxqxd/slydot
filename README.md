@@ -15,13 +15,13 @@ Progress
 - Movement
 - Simple enemy-targetting attacks
 - Self-targetting attacks
+- Floor-targetting attacks
 - Loading levels from files
 
 ### Coming soon (hopefully)
 
 - Mouse controls
 - AI players
-- Floor-targetting attacks
 
 ### Longer-term goals
 

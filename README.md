@@ -25,9 +25,11 @@ Progress
 
 ### Longer-term goals
 
+- Undo
 - GUI
-- Animations
-  - For example: losing cells on a unit makes those tiles sink into the ground
+- Better graphics
+  - Animations
+    - For example: losing cells on a unit makes those tiles sink into the ground
 - Story mode
 - Actual units and attacks (with names and everything)
   - Unit customisation?

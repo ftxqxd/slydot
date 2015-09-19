@@ -14,6 +14,7 @@ pub struct Game {
     pub grid: Grid,
     pub units: VecDeque<Unit>,
     pub frame: u64,
+    pub mouse: (f64, f64),
     pub selected_idx: Option<usize>,
     pub teams: Vec<Team>,
     pub current_team: u16,
@@ -29,6 +30,7 @@ impl Game {
             grid: grid,
             units: units,
             frame: 0,
+            mouse: (0.0, 0.0),
             selected_idx: None,
             teams: vec![
                 Team { name: "Player".into(), controller: Box::new(LocalController) },
@@ -52,10 +54,10 @@ impl Game {
         }
     }
 
-    pub fn for_each_unit<F>(&mut self, mut f: F) where F: FnMut(&mut Unit, &mut Game) {
-        for _ in 0..self.units.len() {
+    pub fn for_each_unit<F>(&mut self, mut f: F) where F: FnMut(&mut Unit, &mut Game, usize) {
+        for idx in 0..self.units.len() {
             let mut unit = self.units.pop_front().unwrap();
-            f(&mut unit, self);
+            f(&mut unit, self, idx);
             self.units.push_back(unit);
         }
     }
@@ -90,7 +92,7 @@ impl Game {
     }
 
     pub fn select_team(&mut self, team_idx: u16) {
-        self.for_each_unit(|unit, _| {
+        self.for_each_unit(|unit, _, _| {
             unit.moves = unit.move_limit;
             unit.has_attacked = false;
             unit.attack = None;
@@ -165,13 +167,20 @@ impl Game {
         }
     }
 
+    pub fn handle_mouse(&mut self, x: f64, y: f64) {
+        self.mouse = (x, y);
+        self.for_current_team(|team, game| {
+            team.controller.handle_mouse(game);
+        });
+    }
+
     pub fn draw(&mut self, c: &Context, gl: &mut GlGraphics) {
         use graphics::*;
         clear([0.0, 0.0, 0.0, 1.0], gl);
         self.for_grid(|grid, game| {
             grid.draw(game, &c, gl);
         });
-        self.for_each_unit(|unit, game| {
+        self.for_each_unit(|unit, game, _| {
             unit.draw(game, &c, gl);
         });
         self.for_grid(|grid, game| {

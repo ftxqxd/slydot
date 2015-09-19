@@ -2,7 +2,6 @@ use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_po
 use grid::Cell;
 use std::collections::VecDeque;
 use std::path::Path;
-use piston::input::Key;
 use graphics::Context;
 use opengl_graphics::{GlGraphics, Texture};
 
@@ -186,28 +185,7 @@ impl Unit {
     }
 
     // Why does `move` have to be a keyword? :(
-    pub fn relocate(&mut self, key: Key, game: &mut Game) {
-        let (dx, dy);
-        match key {
-            Key::Up => {
-                dx = 0;
-                dy = -1;
-            },
-            Key::Down => {
-                dx = 0;
-                dy = 1;
-            },
-            Key::Left => {
-                dx = -1;
-                dy = 0;
-            },
-            Key::Right => {
-                dx = 1;
-                dy = 0;
-            },
-            _ => panic!("Unit::relocate didn’t receive a direction key"),
-        }
-
+    pub fn relocate(&mut self, game: &mut Game, dx: i16, dy: i16) {
         if self.attack.is_some() { self.move_target(game, dx, dy); return }
         if self.moves == 0 { return }
 

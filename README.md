@@ -12,6 +12,7 @@ Progress
 
 - Basic rendering
 - Keyboard controls
+- Mouse controls
 - Movement
 - Simple enemy-targetting attacks
 - Self-targetting attacks
@@ -20,7 +21,6 @@ Progress
 
 ### Coming soon (hopefully)
 
-- Mouse controls
 - AI players
 
 ### Longer-term goals

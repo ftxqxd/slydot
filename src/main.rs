@@ -55,6 +55,9 @@ fn main() {
             game.frame += 1;
         }
 
+        if let Some(a) = e.mouse_cursor_args() {
+            game.handle_mouse(a[0], a[1]);
+        }
         if let Some(b) = e.press_args() {
             game.handle_press(b);
         }

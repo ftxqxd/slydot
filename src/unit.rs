@@ -71,14 +71,40 @@ macro_rules! simple_attack {
 }
 
 impl Attack {
-    pub fn sample() -> Attack {
+    pub fn slice() -> Attack {
         Attack::UnitTargetting {
-            range: 2,
-            perform: simple_attack!(1),
+            range: 1,
+            perform: simple_attack!(2),
         }
     }
 
-    pub fn sample_ground() -> Attack {
+    pub fn dice() -> Attack {
+        fn atk(slf: &mut Unit, unit: Option<&mut Unit>) -> bool {
+            if slf.parts.len() < 3 {
+                return false
+            }
+
+            match unit {
+                Some(unit) => unit.damage(3),
+                None => slf.damage(3),
+            }
+            true
+        }
+
+        Attack::UnitTargetting {
+            range: 1,
+            perform: atk,
+        }
+    }
+
+    pub fn thump() -> Attack {
+        Attack::UnitTargetting {
+            range: 1,
+            perform: simple_attack!(3),
+        }
+    }
+
+    pub fn one() -> Attack {
         fn add_tile(_: &mut Unit, game: &mut Game, coords: (i16, i16)) -> bool {
             game.grid[coords] = Cell::Floor;
             true
@@ -113,18 +139,18 @@ impl Unit {
     }
 
     pub fn sample(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
+        let tex = Texture::from_path(&Path::new("./assets/hack2.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 3,
+            len_limit: 4,
             selected: false,
             attack: None,
-            moves: 2,
-            move_limit: 2,
+            moves: 3,
+            move_limit: 3,
             has_attacked: false,
             team: 0,
-            attacks: vec![Attack::sample(), Attack::sample_ground()],
-            colour: [0.0, 0.5647058823529412, 0.9882352941176471],
+            attacks: vec![Attack::slice(), Attack::dice()],
+            colour: [0.0, 0.7490196078431373, 0.9686274509803922],
             texture: tex,
         }
     }
@@ -133,32 +159,32 @@ impl Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 1,
+            len_limit: 4,
             selected: false,
             attack: None,
-            moves: 5,
-            move_limit: 5,
+            moves: 3,
+            move_limit: 3,
             has_attacked: false,
             team: 0,
-            attacks: vec![Attack::sample()],
+            attacks: vec![Attack::slice(), Attack::dice()],
             colour: [0.5647058823529412, 0.9882352941176471, 0.0],
             texture: tex,
         }
     }
 
     pub fn sample_enemy(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
+        let tex = Texture::from_path(&Path::new("./assets/warden.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 4,
+            len_limit: 5,
             selected: false,
             attack: None,
-            moves: 10,
-            move_limit: 10,
+            moves: 1,
+            move_limit: 1,
             has_attacked: false,
             team: 1,
-            attacks: vec![Attack::sample()],
-            colour: [0.5647058823529412, 0.0, 0.9882352941176471],
+            attacks: vec![Attack::thump()],
+            colour: [0.9725490196078431, 0.0, 0.06666666666666667],
             texture: tex,
         }
     }
@@ -167,14 +193,14 @@ impl Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 2,
+            len_limit: 5,
             selected: false,
             attack: None,
-            moves: 3,
-            move_limit: 3,
+            moves: 1,
+            move_limit: 1,
             has_attacked: false,
             team: 1,
-            attacks: vec![Attack::sample()],
+            attacks: vec![Attack::thump()],
             colour: [0.5647058823529412, 1.0, 0.9882352941176471],
             texture: tex,
         }
@@ -335,12 +361,13 @@ impl Unit {
                         let mut target_is_kill = false;
                         {
                             let target = &mut game.units[idx];
-                            perform(self, Some(target));
-                            if target.parts.len() == 0 {
-                                target_is_kill = true;
+                            if perform(self, Some(target)) {
+                                if target.parts.len() == 0 {
+                                    target_is_kill = true;
+                                }
+                                self.moves = 0;
+                                self.has_attacked = true;
                             }
-                            self.moves = 0;
-                            self.has_attacked = true;
                         }
                         if target_is_kill {
                             // no
@@ -348,9 +375,10 @@ impl Unit {
                         }
                     } else {
                         if self.parts.iter().find(|&&x| x == coords).is_some() {
-                            perform(self, None);
-                            self.moves = 0;
-                            self.has_attacked = true;
+                            if perform(self, None) {
+                                self.moves = 0;
+                                self.has_attacked = true;
+                            }
                             // deleting self if self.parts.len() == 0 is done in game.rs, fn fire
                         }
                     }
@@ -358,9 +386,10 @@ impl Unit {
                 Attack::GroundTargetting { perform, full, empty, .. } => {
                     if (full || game.grid[coords] != Cell::Floor)
                     && (empty || game.grid[coords] != Cell::Empty) {
-                        perform(self, game, coords);
-                        self.moves = 0;
-                        self.has_attacked = true;
+                        if perform(self, game, coords) {
+                            self.moves = 0;
+                            self.has_attacked = true;
+                        }
                     }
                 },
             }

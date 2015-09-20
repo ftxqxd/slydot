@@ -46,7 +46,8 @@ fn main() {
 
     let ref mut gl = GlGraphics::new(opengl);
     let mut game = Game::sample();
-    game.select(0);
+    let idx = game.units.iter().position(|x| x.team == 0).unwrap();
+    game.select(idx);
     for e in window {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {

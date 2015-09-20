@@ -8,7 +8,7 @@ use graphics::Context;
 use opengl_graphics::GlGraphics;
 
 use super::{Unit, Grid, Controller};
-use controller::{LocalController, DummyController};
+use controller::{LocalController, DummyController, AiController};
 
 pub struct Game {
     pub grid: Grid,
@@ -34,7 +34,7 @@ impl Game {
             selected_idx: None,
             teams: vec![
                 Team { name: "Player".into(), controller: Box::new(LocalController) },
-                Team { name: "Enemy".into(), controller: Box::new(LocalController) },
+                Team { name: "Enemy".into(), controller: Box::new(AiController::new()) },
             ],
             current_team: 0,
         }
@@ -171,6 +171,13 @@ impl Game {
         self.mouse = (x, y);
         self.for_current_team(|team, game| {
             team.controller.handle_mouse(game);
+        });
+    }
+
+    pub fn handle_frame(&mut self) {
+        self.frame += 1;
+        self.for_current_team(|team, game| {
+            team.controller.handle_frame(game);
         });
     }
 

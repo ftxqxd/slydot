@@ -18,14 +18,14 @@ Progress
 - Self-targetting attacks
 - Floor-targetting attacks
 - Loading levels from files
+- Simple AI players
 
 ### Coming soon (hopefully)
 
-- AI players
+- Undo
 
 ### Longer-term goals
 
-- Undo
 - GUI
 - Better graphics
   - Animations

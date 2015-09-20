@@ -52,7 +52,7 @@ fn main() {
             gl.draw(args.viewport(), |c, gl| {
                 game.draw(&c, gl);
             });
-            game.frame += 1;
+            game.handle_frame();
         }
 
         if let Some(a) = e.mouse_cursor_args() {

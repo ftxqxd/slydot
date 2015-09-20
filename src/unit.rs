@@ -73,7 +73,7 @@ macro_rules! simple_attack {
 impl Attack {
     pub fn sample() -> Attack {
         Attack::UnitTargetting {
-            range: 4,
+            range: 2,
             perform: simple_attack!(1),
         }
     }
@@ -116,11 +116,11 @@ impl Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 4,
+            len_limit: 3,
             selected: false,
             attack: None,
-            moves: 10,
-            move_limit: 10,
+            moves: 2,
+            move_limit: 2,
             has_attacked: false,
             team: 0,
             attacks: vec![Attack::sample(), Attack::sample_ground()],
@@ -133,11 +133,11 @@ impl Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 4,
+            len_limit: 1,
             selected: false,
             attack: None,
-            moves: 10,
-            move_limit: 10,
+            moves: 5,
+            move_limit: 5,
             has_attacked: false,
             team: 0,
             attacks: vec![Attack::sample()],
@@ -153,8 +153,8 @@ impl Unit {
             len_limit: 4,
             selected: false,
             attack: None,
-            moves: 4,
-            move_limit: 4,
+            moves: 10,
+            move_limit: 10,
             has_attacked: false,
             team: 1,
             attacks: vec![Attack::sample()],
@@ -167,11 +167,11 @@ impl Unit {
         let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
-            len_limit: 4,
+            len_limit: 2,
             selected: false,
             attack: None,
-            moves: 4,
-            move_limit: 4,
+            moves: 3,
+            move_limit: 3,
             has_attacked: false,
             team: 1,
             attacks: vec![Attack::sample()],

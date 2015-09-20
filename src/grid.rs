@@ -1,8 +1,7 @@
 use super::{Game, Unit, CELL_SIZE, CELL_PADDING, cell_pos};
 use std::ops::{Index, IndexMut};
-use std::path::Path;
 use graphics::Context;
-use opengl_graphics::{GlGraphics, Texture};
+use opengl_graphics::GlGraphics;
 use std::collections::VecDeque;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -11,6 +10,7 @@ pub enum Cell {
     Floor,
 }
 
+#[derive(Clone)]
 pub struct Grid {
     pub grid: Vec<Cell>,
     pub width: usize,
@@ -19,7 +19,6 @@ pub struct Grid {
     pub attack_loc: Option<(i16, i16)>,
     /// `None` when the player has no moves left or when no unit is selected.
     pub player_pos: Option<(i16, i16)>,
-    tx_crosshair: Texture,
 }
 
 macro_rules! grid {
@@ -30,7 +29,6 @@ macro_rules! grid {
 
 impl Grid {
     pub fn dummy() -> Grid {
-        let tex = Texture::from_memory_alpha(&[], 0, 0).unwrap();
         Grid {
             grid: vec![],
             width: 0,
@@ -38,7 +36,6 @@ impl Grid {
             attack_hi: vec![],
             attack_loc: None,
             player_pos: None,
-            tx_crosshair: tex,
         }
     }
 
@@ -71,7 +68,6 @@ impl Grid {
         }
         let width = width.unwrap();
         let len = v.len();
-        let tex = Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap();
         (Grid {
             grid: v,
             width: width as usize,
@@ -79,12 +75,10 @@ impl Grid {
             attack_hi: vec![0; len],
             attack_loc: None,
             player_pos: None,
-            tx_crosshair: tex,
         }, units)
     }
 
     pub fn sample() -> Grid {
-        let tex = Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap();
         Grid {
             grid: grid![Empty Empty Floor Floor Floor Floor Floor Empty Empty
                         Floor Floor Floor Floor Floor Floor Floor Floor Floor
@@ -97,7 +91,6 @@ impl Grid {
             attack_hi: vec![0; 9 * 6],
             attack_loc: None,
             player_pos: None,
-            tx_crosshair: tex,
         }
     }
 
@@ -183,7 +176,7 @@ impl Grid {
                         CELL_SIZE + 4.0, CELL_SIZE + 4.0];
             let alpha = 1.0 - (game.frame % 20) as f32 / 38.0;
             Image::new().rect(rect).color([1.0, 1.0, 1.0, alpha])
-                .draw(&self.tx_crosshair, default_draw_state(), c.transform, gl);
+                .draw(&game.textures[4], default_draw_state(), c.transform, gl);
         }
     }
 }

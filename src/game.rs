@@ -5,7 +5,7 @@ use std::io::Read;
 use std::path::Path;
 use piston::input::Button;
 use graphics::Context;
-use opengl_graphics::GlGraphics;
+use opengl_graphics::{GlGraphics, Texture};
 
 use super::{Unit, Grid, Controller};
 use controller::{LocalController, DummyController, AiController};
@@ -18,17 +18,40 @@ pub struct Game {
     pub selected_idx: Option<usize>,
     pub teams: Vec<Team>,
     pub current_team: u16,
+    pub textures: Vec<Texture>,
+    undo: UndoState,
+}
+
+struct UndoState {
+    grid: Grid,
+    units: VecDeque<Unit>,
+    selected_idx: Option<usize>,
 }
 
 impl Game {
+    pub fn save(&mut self) {
+        self.undo = UndoState {
+            grid: self.grid.clone(),
+            units: self.units.clone(),
+            selected_idx: self.selected_idx,
+        };
+    }
+
+    pub fn restore(&mut self) {
+        self.grid = self.undo.grid.clone();
+        self.units = self.undo.units.clone();
+        self.selected_idx = self.undo.selected_idx;
+    }
+
     pub fn sample() -> Game {
         let mut f = File::open(Path::new("levels/test.sunrise")).unwrap();
         let mut s = String::new();
         f.read_to_string(&mut s).unwrap();
         let (grid, units) = Grid::from_string(&s);
+
         Game {
-            grid: grid,
-            units: units,
+            grid: grid.clone(),
+            units: units.clone(),
             frame: 0,
             mouse: (0.0, 0.0),
             selected_idx: None,
@@ -37,6 +60,18 @@ impl Game {
                 Team { name: "Enemy".into(), controller: Box::new(AiController::new()) },
             ],
             current_team: 0,
+            textures: vec![
+                Texture::from_memory_alpha(&[], 0, 0).unwrap(),
+                Texture::from_path(&Path::new("./assets/hack2.png")).unwrap(),
+                Texture::from_path(&Path::new("./assets/lightning.png")).unwrap(),
+                Texture::from_path(&Path::new("./assets/warden.png")).unwrap(),
+                Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap(),
+            ],
+            undo: UndoState {
+                grid: grid,
+                units: units,
+                selected_idx: None,
+            },
         }
     }
 
@@ -100,6 +135,18 @@ impl Game {
         let idx = self.units.iter().position(|x| x.team == team_idx).unwrap();
         self.select(idx);
         self.current_team = team_idx;
+        self.save();
+    }
+
+    pub fn next_team(&mut self) {
+        let idx = self.current_team;
+        let len = self.teams.len() as u16;
+        if let Some(idx) = self.selected_idx {
+            self.for_unit(idx, |unit, game| {
+                unit.leave_attack(game);
+            });
+        }
+        self.select_team((idx + 1) % len);
     }
 
     pub fn attack(&mut self, unit_idx: usize, attack: u16) {

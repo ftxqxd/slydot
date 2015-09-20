@@ -19,14 +19,14 @@ Progress
 - Floor-targetting attacks
 - Loading levels from files
 - Simple AI players
+- Undo
 
 ### Coming soon (hopefully)
 
-- Undo
+- GUI
 
 ### Longer-term goals
 
-- GUI
 - Better graphics
   - Animations
     - For example: losing cells on a unit makes those tiles sink into the ground

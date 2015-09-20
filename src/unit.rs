@@ -1,10 +1,10 @@
 use super::{Game, CELL_SIZE, CELL_PADDING, CELL_OFFSET_X, CELL_OFFSET_Y, cell_pos};
 use grid::Cell;
 use std::collections::VecDeque;
-use std::path::Path;
 use graphics::Context;
-use opengl_graphics::{GlGraphics, Texture};
+use opengl_graphics::GlGraphics;
 
+#[derive(Clone)]
 pub struct Unit {
     pub parts: VecDeque<(i16, i16)>,
     pub len_limit: usize,
@@ -16,7 +16,7 @@ pub struct Unit {
     pub attack: Option<u16>,
     pub attacks: Vec<Attack>,
     colour: [f32; 3],
-    texture: Texture,
+    texture: usize,
 }
 
 #[derive(Copy)]
@@ -139,7 +139,6 @@ impl Unit {
     }
 
     pub fn sample(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/hack2.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
@@ -151,12 +150,11 @@ impl Unit {
             team: 0,
             attacks: vec![Attack::slice(), Attack::dice()],
             colour: [0.0, 0.7490196078431373, 0.9686274509803922],
-            texture: tex,
+            texture: 1,
         }
     }
 
     pub fn sample2(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 4,
@@ -168,12 +166,11 @@ impl Unit {
             team: 0,
             attacks: vec![Attack::slice(), Attack::dice()],
             colour: [0.5647058823529412, 0.9882352941176471, 0.0],
-            texture: tex,
+            texture: 2,
         }
     }
 
     pub fn sample_enemy(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/warden.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 5,
@@ -185,12 +182,11 @@ impl Unit {
             team: 1,
             attacks: vec![Attack::thump()],
             colour: [0.9725490196078431, 0.0, 0.06666666666666667],
-            texture: tex,
+            texture: 3,
         }
     }
 
     pub fn sample_enemy2(coords: (i16, i16)) -> Unit {
-        let tex = Texture::from_path(&Path::new("./assets/lightning.png")).unwrap();
         Unit {
             parts: { let mut v = VecDeque::new(); v.push_back(coords); v },
             len_limit: 5,
@@ -202,7 +198,7 @@ impl Unit {
             team: 1,
             attacks: vec![Attack::thump()],
             colour: [0.5647058823529412, 1.0, 0.9882352941176471],
-            texture: tex,
+            texture: 2,
         }
     }
 
@@ -465,7 +461,8 @@ impl Unit {
         let rect = [CELL_OFFSET_X + x as f64 * (CELL_SIZE + CELL_PADDING) - 1.0,
                     CELL_OFFSET_Y + y as f64 * (CELL_SIZE + CELL_PADDING) - 1.0,
                     CELL_SIZE - 1.0, CELL_SIZE - 1.0];
-        Image::new().rect(rect).draw(&self.texture, default_draw_state(), c.transform, gl);
+        Image::new().rect(rect)
+              .draw(&game.textures[self.texture], default_draw_state(), c.transform, gl);
         let border = [rect[0], rect[1], rect[2] + 3.5, rect[3] + 2.5];
         if self.selected {
             Rectangle::new_border([1.0, 1.0, 1.0, 1.0 - (game.frame % 40) as f32 / 39.0], 1.0)

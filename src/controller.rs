@@ -82,14 +82,10 @@ impl Controller for LocalController {
                     }
                 },
                 Key::Space => {
-                    let idx = game.current_team;
-                    let len = game.teams.len() as u16;
-                    if let Some(idx) = game.selected_idx {
-                        game.for_unit(idx, |unit, game| {
-                            unit.leave_attack(game);
-                        });
-                    }
-                    game.select_team((idx + 1) % len);
+                    game.next_team();
+                },
+                Key::U => {
+                    game.restore();
                 },
                 _ => {},
             },
@@ -225,10 +221,8 @@ impl Controller for AiController {
                     }
                 });
                 if all {
-                    let idx = game.current_team;
-                    let len = game.teams.len() as u16;
                     self.enemy_positions = vec![];
-                    game.select_team((idx + 1) % len);
+                    game.next_team();
                 } else {
                     game.select_next();
                 }

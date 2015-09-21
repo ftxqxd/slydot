@@ -250,8 +250,9 @@ impl Controller for AiController {
                         game.attack(curr, 0); // TODO: allow multiple AI attacks?
                         game.grid.attack_loc = Some((x, y));
                     } else {
-                        game.units[curr].has_attacked = true;
-                        game.units[curr].moves = 0;
+                        let unit = &mut game.units[curr];
+                        unit.has_attacked = true;
+                        unit.moves = 0;
                     }
                 }
             } else {

@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use vec_map::VecMap;
 use std::mem;
 use std::fs::File;
 use std::io::Read;
@@ -12,7 +12,7 @@ use controller::{LocalController, DummyController, AiController};
 
 pub struct Game {
     pub grid: Grid,
-    pub units: VecDeque<Unit>,
+    pub units: VecMap<Unit>,
     pub frame: u64,
     pub mouse: (f64, f64),
     pub selected_idx: Option<usize>,
@@ -24,7 +24,7 @@ pub struct Game {
 
 struct UndoState {
     grid: Grid,
-    units: VecDeque<Unit>,
+    units: VecMap<Unit>,
     selected_idx: Option<usize>,
 }
 
@@ -76,24 +76,17 @@ impl Game {
     }
 
     pub fn for_unit<F>(&mut self, idx: usize, f: F) where F: FnOnce(&mut Unit, &mut Game) {
-        let mut unit = self.units.remove(idx).unwrap();
+        let mut unit = self.units.remove(&idx).unwrap();
         f(&mut unit, self);
-        //self.units.insert(idx, unit); XXX restore when stable
-        let mut temp = VecDeque::new();
-        for _ in 0..idx {
-            temp.push_back(self.units.pop_front().unwrap());
-        }
-        self.units.push_front(unit);
-        while let Some(u) = temp.pop_back() {
-            self.units.push_front(u);
-        }
+        self.units.insert(idx, unit);
     }
 
     pub fn for_each_unit<F>(&mut self, mut f: F) where F: FnMut(&mut Unit, &mut Game, usize) {
-        for idx in 0..self.units.len() {
-            let mut unit = self.units.pop_front().unwrap();
+        let iter = self.units.keys().collect::<Vec<_>>().into_iter();
+        for idx in iter {
+            let mut unit = self.units.remove(&idx).unwrap();
             f(&mut unit, self, idx);
-            self.units.push_back(unit);
+            self.units.insert(idx, unit);
         }
     }
 
@@ -114,7 +107,7 @@ impl Game {
 
     pub fn is_valid(&self, x: i16, y: i16) -> bool {
         self.grid.is_valid(x, y)
-            && self.units.iter().all(|a| !a.occupies(x, y))
+            && self.units.values().all(|a| !a.occupies(x, y))
     }
 
     pub fn select(&mut self, unit_idx: usize) {
@@ -132,7 +125,7 @@ impl Game {
             unit.has_attacked = false;
             unit.attack = None;
         });
-        let idx = self.units.iter().position(|x| x.team == team_idx).unwrap();
+        let idx = self.units.iter().find(|&(_, ref x)| x.team == team_idx).unwrap().0;
         self.select(idx);
         self.current_team = team_idx;
         self.save();
@@ -164,8 +157,8 @@ impl Game {
             unit.fire(game);
         });
         if self.units[unit_idx].parts.len() == 0 {
-            self.units.remove(unit_idx);
-            let idx = self.units.iter().position(|x| x.is_player(self));
+            self.units.remove(&unit_idx);
+            let idx = self.units.iter().find(|&(_, ref x)| x.is_player(self)).map(|(i, _)| i);
             if let Some(idx) = idx {
                 self.select(idx);
                 self.for_unit(idx, |unit, game| {
@@ -178,14 +171,15 @@ impl Game {
     pub fn select_next(&mut self) {
         if let Some(idx) = self.selected_idx {
             if self.units[idx].attack.is_none() {
-                let len = self.units.len();
-                let mut idx = idx;
+                let mut keys: Vec<_> = self.units.keys().collect();
+                keys.sort();
+                let mut idx = keys.iter().position(|x| *x == idx).unwrap();
                 loop {
                     idx += 1;
-                    idx %= len;
-                    if self.units[idx].is_player(self) { break }
+                    idx %= keys.len();
+                    if self.units[keys[idx]].is_player(self) { break }
                 }
-                self.select(idx);
+                self.select(keys[idx] as usize);
             }
         }
     }

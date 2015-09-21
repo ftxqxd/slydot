@@ -6,6 +6,7 @@ dependencies = [
  "piston2d-graphics 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston2d-opengl_graphics 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston_window 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vec_map 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -646,6 +647,11 @@ dependencies = [
  "winapi 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "vec_map"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "vecmath"

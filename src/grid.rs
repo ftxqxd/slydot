@@ -2,7 +2,7 @@ use super::{Game, Unit, CELL_SIZE, CELL_PADDING, cell_pos};
 use std::ops::{Index, IndexMut};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
-use std::collections::VecDeque;
+use vec_map::VecMap;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -40,11 +40,12 @@ impl Grid {
     }
 
     // XXX is this the best place for this?
-    pub fn from_string(s: &str) -> (Grid, VecDeque<Unit>) {
+    pub fn from_string(s: &str) -> (Grid, VecMap<Unit>) {
         let mut v = vec![];
-        let mut units = VecDeque::new();
+        let mut units = VecMap::new();
         let mut width = None;
         let mut y = 0;
+        let mut idx = 0;
         for line in s.lines() {
             let mut x = 0;
             for c in line.chars() {
@@ -54,7 +55,8 @@ impl Grid {
                     // tile, player starting point, or enemy tile has floor underneath
                     c => {
                         v.push(Cell::Floor);
-                        units.push_back(Unit::from_char(c, (x, y)));
+                        units.insert(idx, Unit::from_char(c, (x, y)));
+                        idx += 1;
                     },
                 }
                 x += 1;
@@ -168,8 +170,6 @@ impl Grid {
         }
 
 
-        // XXX there is some kind of newly-introduced lag, I think
-        // Look at how slowly the tail blinks
         if let Some((x, y)) = self.attack_loc {
             let rect = [cell_pos(x as i16) - 2.0,
                         cell_pos(y as i16) - 2.0,

@@ -9,6 +9,7 @@ extern crate piston;
 extern crate piston_window;
 extern crate graphics;
 extern crate opengl_graphics;
+extern crate vec_map;
 
 use piston::input::*;
 use piston::window::WindowSettings;
@@ -46,7 +47,7 @@ fn main() {
 
     let ref mut gl = GlGraphics::new(opengl);
     let mut game = Game::sample();
-    let idx = game.units.iter().position(|x| x.team == 0).unwrap();
+    let idx = game.units.iter().find(|&(_, ref x)| x.team == 0).unwrap().0;
     game.select(idx);
     game.save();
     for e in window {

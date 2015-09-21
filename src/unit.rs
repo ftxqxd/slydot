@@ -348,7 +348,7 @@ impl Unit {
             let coords = game.grid.attack_loc.unwrap();
             match self.attacks[atk as usize] {
                 Attack::UnitTargetting { perform, .. } => {
-                    if let Some(idx) = game.units.iter_mut().position(|unit| {
+                    if let Some((idx, _)) = game.units.iter_mut().find(|&(_, ref unit)| {
                         for &ucoords in &unit.parts {
                             if coords == ucoords { return true }
                         }
@@ -367,7 +367,7 @@ impl Unit {
                         }
                         if target_is_kill {
                             // no
-                            game.units.remove(idx);
+                            game.units.remove(&idx);
                         }
                     } else {
                         if self.parts.iter().find(|&&x| x == coords).is_some() {

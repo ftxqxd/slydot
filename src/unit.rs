@@ -214,6 +214,10 @@ impl Unit {
         let (headx, heady) = self.parts[0];
         let new = (headx + dx, heady + dy);
         if !game.is_valid(new.0, new.1) { return }
+        if !game.done {
+            game.save_with(self.clone());
+            game.done = true;
+        }
         if let Some(idx) = self.parts.iter().position(|x| *x == new) {
             let val = self.parts.remove(idx).unwrap();
             self.parts.push_front(val);

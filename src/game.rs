@@ -19,7 +19,9 @@ pub struct Game {
     pub teams: Vec<Team>,
     pub current_team: u16,
     pub textures: Vec<Texture>,
-    undo: UndoState,
+    pub done: bool,
+    curr_units: Vec<usize>,
+    undo: Vec<UndoState>,
 }
 
 struct UndoState {
@@ -30,17 +32,35 @@ struct UndoState {
 
 impl Game {
     pub fn save(&mut self) {
-        self.undo = UndoState {
+        self.undo.push(UndoState {
             grid: self.grid.clone(),
             units: self.units.clone(),
             selected_idx: self.selected_idx,
-        };
+        });
     }
 
-    pub fn restore(&mut self) {
-        self.grid = self.undo.grid.clone();
-        self.units = self.undo.units.clone();
-        self.selected_idx = self.undo.selected_idx;
+    pub fn save_with(&mut self, unit: Unit) {
+        let idx = *self.curr_units.last().unwrap();
+        let mut units = self.units.clone();
+        units.insert(idx, unit);
+        self.undo.push(UndoState {
+            grid: self.grid.clone(),
+            units: units,
+            selected_idx: self.selected_idx,
+        });
+    }
+
+    pub fn revert(&mut self) {
+        if let Some(UndoState { grid, units, selected_idx }) = self.undo.pop() {
+            self.grid = grid;
+            self.units = units;
+            self.selected_idx = selected_idx;
+            self.done = false;
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.undo.clear();
     }
 
     pub fn sample() -> Game {
@@ -67,17 +87,17 @@ impl Game {
                 Texture::from_path(&Path::new("./assets/warden.png")).unwrap(),
                 Texture::from_path(&Path::new("./assets/crosshair.png")).unwrap(),
             ],
-            undo: UndoState {
-                grid: grid,
-                units: units,
-                selected_idx: None,
-            },
+            done: false,
+            curr_units: vec![],
+            undo: vec![],
         }
     }
 
     pub fn for_unit<F>(&mut self, idx: usize, f: F) where F: FnOnce(&mut Unit, &mut Game) {
         let mut unit = self.units.remove(&idx).unwrap();
+        self.curr_units.push(idx);
         f(&mut unit, self);
+        self.curr_units.pop();
         self.units.insert(idx, unit);
     }
 
@@ -85,7 +105,9 @@ impl Game {
         let iter = self.units.keys().collect::<Vec<_>>().into_iter();
         for idx in iter {
             let mut unit = self.units.remove(&idx).unwrap();
+            self.curr_units.push(idx);
             f(&mut unit, self, idx);
+            self.curr_units.pop();
             self.units.insert(idx, unit);
         }
     }
@@ -117,9 +139,11 @@ impl Game {
         self.for_unit(unit_idx, |unit, game| {
             unit.highlight(game);
         });
+        self.done = false;
     }
 
     pub fn select_team(&mut self, team_idx: u16) {
+        self.reset();
         self.for_each_unit(|unit, _, _| {
             unit.moves = unit.move_limit;
             unit.has_attacked = false;
@@ -128,7 +152,7 @@ impl Game {
         let idx = self.units.iter().find(|&(_, ref x)| x.team == team_idx).unwrap().0;
         self.select(idx);
         self.current_team = team_idx;
-        self.save();
+        self.done = false;
     }
 
     pub fn next_team(&mut self) {

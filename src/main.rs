@@ -49,7 +49,6 @@ fn main() {
     let mut game = Game::sample();
     let idx = game.units.iter().find(|&(_, ref x)| x.team == 0).unwrap().0;
     game.select(idx);
-    game.save();
     for e in window {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {

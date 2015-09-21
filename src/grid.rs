@@ -135,7 +135,7 @@ impl Grid {
 
         if let Some((px, py)) = self.player_pos {
             let colour = [1.0, 1.0, 1.0, 0.8];
-            if self.is_valid(px + 1, py) {
+            if self.highlight[px as usize + 1 + self.width*py as usize] > 0 {
                 polygon(colour,
                         &[[cell_pos(px + 1), cell_pos(py)],
                           [cell_pos(px + 1) + CELL_SIZE/2.0, cell_pos(py) + CELL_SIZE/2.0],
@@ -143,7 +143,7 @@ impl Grid {
                         c.transform,
                         gl);
             }
-            if self.is_valid(px - 1, py) {
+            if self.highlight[px as usize - 1 + self.width*py as usize] > 0 {
                 polygon(colour,
                         &[[cell_pos(px) - CELL_PADDING, cell_pos(py)],
                           [cell_pos(px) - CELL_PADDING - CELL_SIZE/2.0, cell_pos(py) + CELL_SIZE/2.0],
@@ -151,7 +151,7 @@ impl Grid {
                         c.transform,
                         gl);
             }
-            if self.is_valid(px, py + 1) {
+            if self.highlight[px as usize + self.width*(py as usize + 1)] > 0 {
                 polygon(colour,
                         &[[cell_pos(px), cell_pos(py) + CELL_SIZE + CELL_PADDING],
                           [cell_pos(px) + CELL_SIZE/2.0, cell_pos(py) + CELL_SIZE * 1.5 + CELL_PADDING],
@@ -159,7 +159,7 @@ impl Grid {
                         c.transform,
                         gl);
             }
-            if self.is_valid(px, py - 1) {
+            if self.highlight[px as usize + self.width*(py as usize - 1)] > 0 {
                 polygon(colour,
                         &[[cell_pos(px), cell_pos(py) - CELL_PADDING],
                           [cell_pos(px) + CELL_SIZE/2.0, cell_pos(py) - CELL_PADDING - CELL_SIZE/2.0],

@@ -92,6 +92,20 @@ impl Controller for LocalController {
             Button::Mouse(MouseButton::Left) => {
                 let (x, y) = coords_to_tile(game.mouse);
 
+                // Selecting
+                if game.grid.attack_loc.is_none() {
+                    let mut idx = None;
+                    game.for_each_unit(|unit, game, i| {
+                        if unit.parts[0] == (x, y) && unit.team == game.current_team {
+                            idx = Some(i);
+                        }
+                    });
+                    if let Some(idx) = idx {
+                        game.select(idx);
+                        return
+                    }
+                }
+
                 let mut success = false;
                 // Moving or attacking
                 if let Some(idx) = game.selected_idx {
@@ -123,18 +137,6 @@ impl Controller for LocalController {
                 }
 
                 if success { return }
-
-                // Selecting
-                let mut idx = None;
-                game.for_each_unit(|unit, game, i| {
-                    if unit.parts[0] == (x, y) && unit.team == game.current_team {
-                        idx = Some(i);
-                    }
-                });
-                if let Some(idx) = idx {
-                    game.select(idx);
-                    return
-                }
             },
             _ => {},
         }

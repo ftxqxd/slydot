@@ -20,11 +20,11 @@ pub struct Game {
     pub current_team: u16,
     pub textures: Vec<Texture>,
     pub done: bool,
+    pub undo: Vec<UndoState>,
     curr_units: Vec<usize>,
-    undo: Vec<UndoState>,
 }
 
-struct UndoState {
+pub struct UndoState {
     grid: Grid,
     units: VecMap<Unit>,
     selected_idx: Option<usize>,
@@ -50,17 +50,13 @@ impl Game {
         });
     }
 
-    pub fn revert(&mut self) {
+    pub fn undo(&mut self) {
         if let Some(UndoState { grid, units, selected_idx }) = self.undo.pop() {
             self.grid = grid;
             self.units = units;
             self.selected_idx = selected_idx;
             self.done = false;
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.undo.clear();
     }
 
     pub fn sample() -> Game {
@@ -70,8 +66,8 @@ impl Game {
         let (grid, units) = Grid::from_string(&s);
 
         Game {
-            grid: grid.clone(),
-            units: units.clone(),
+            grid: grid,
+            units: units,
             frame: 0,
             mouse: (0.0, 0.0),
             selected_idx: None,
@@ -143,7 +139,7 @@ impl Game {
     }
 
     pub fn select_team(&mut self, team_idx: u16) {
-        self.reset();
+        self.undo.clear();
         self.for_each_unit(|unit, _, _| {
             unit.moves = unit.move_limit;
             unit.has_attacked = false;
@@ -169,8 +165,10 @@ impl Game {
     pub fn attack(&mut self, unit_idx: usize, attack: u16) {
         self.for_unit(unit_idx, |unit, game| {
             if unit.attack.is_some() {
+                game.undo.pop();
                 unit.leave_attack(game);
             } else {
+                game.save_with(unit.clone());
                 unit.attack(game, attack);
             }
         });

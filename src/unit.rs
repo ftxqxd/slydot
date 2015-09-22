@@ -347,6 +347,7 @@ impl Unit {
     }
 
     pub fn fire(&mut self, game: &mut Game) {
+        let save = game.undo.pop().unwrap();
         debug_assert!(self.attack.is_some());
         if let Some(atk) = self.attack {
             let coords = game.grid.attack_loc.unwrap();
@@ -360,13 +361,14 @@ impl Unit {
                     }) {
                         let mut target_is_kill = false;
                         {
-                            let target = &mut game.units[idx];
-                            if perform(self, Some(target)) {
+                            if perform(self, Some(&mut game.units[idx])) {
+                                let target = &mut game.units[idx];
                                 if target.parts.len() == 0 {
                                     target_is_kill = true;
                                 }
                                 self.moves = 0;
                                 self.has_attacked = true;
+                                game.undo.push(save);
                             }
                         }
                         if target_is_kill {
@@ -378,6 +380,7 @@ impl Unit {
                             if perform(self, None) {
                                 self.moves = 0;
                                 self.has_attacked = true;
+                                game.undo.push(save);
                             }
                             // deleting self if self.parts.len() == 0 is done in game.rs, fn fire
                         }
@@ -389,6 +392,7 @@ impl Unit {
                         if perform(self, game, coords) {
                             self.moves = 0;
                             self.has_attacked = true;
+                            game.undo.push(save);
                         }
                     }
                 },

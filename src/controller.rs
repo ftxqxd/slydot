@@ -85,7 +85,7 @@ impl Controller for LocalController {
                     game.next_team();
                 },
                 Key::U => {
-                    game.revert();
+                    game.undo();
                 },
                 _ => {},
             },
